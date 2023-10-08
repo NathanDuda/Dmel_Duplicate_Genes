@@ -1,13 +1,13 @@
-# Title: 3_mRNA_duplicates_from_blast
+# Title: 4_mRNA_duplicates_from_blast.R
 # Author: Nathan Duda
-# Date: 10/6/2023
+# Date: 10/8/2023
 # Purpose: Format the file with all mRNA sequences to not contain overlapping mRNAs.
 #          Use this to clean the overlapping mRNA query_ids from blast outputs.
 #          Extract quality blast hits from the mRNA blast output files.
 #          Remove overlapping blast hits and write all to a file.
 
-source("startup.R")
 
+source("startup.R")
 
 # read in all mRNA sequences
 all_mRNA <- read.csv("./all_mRNA.tsv", sep="")
@@ -48,19 +48,23 @@ nonoverlapping_mrna <- nonoverlapping_mrna %>%
   distinct(chrom,fly,FBgn, .keep_all = T) %>%
   select(-c(is_between,is_between_end, keep)) # remove unnecessary columns
 
-# remove the two mrnas annotated twice on chromosomes different from all other flies: 
+# remove the few mrnas annotated twice on chromosomes different from all other flies: 
 counts <- as.data.frame(table(nonoverlapping_mrna$fly, nonoverlapping_mrna$FBgn))
-# RAL-091 FBgn0085334 on X chromosome 
-# MUN-009 FBgn0000500 on 2R chromosome
 nonoverlapping_mrna <- nonoverlapping_mrna %>%
   filter(!(fly == 'RAL-091' & FBgn == 'FBgn0085334' & chrom == 'X')) %>%
-  filter(!(fly == 'MUN-009' & FBgn == 'FBgn0000500' & chrom == '2R'))
+  filter(!(fly == 'MUN-009' & FBgn == 'FBgn0000500' & chrom == '2R')) %>%
+  filter(!(fly == 'COR-025' & FBgn == 'FBgn0026320' & chrom == '2R')) %>%
+  filter(!(fly == 'T29A' & FBgn == 'FBgn0036359' & chrom == '3R')) %>%
+  filter(!(fly == 'RAL-091' & FBgn == 'FBgn0053631' & chrom == '3L')) %>%
+  filter(!(fly == 'RAL-059' & FBgn == 'FBgn0085277' & chrom == '3L')) %>%
+  filter(!(fly == 'COR-018' & FBgn == 'FBgn0085334' & chrom == '3L')) %>%
+  filter(!(fly == 'RAL-091' & FBgn == 'FBgn0085334' & chrom == '3L')) %>%
+  filter(!(fly == 'AKA-017' & FBgn == 'FBgn0266977' & chrom == 'X'))
 
 # write to table 
 write.table(nonoverlapping_mrna,'Non_Overlapping_mRNA.tsv')
-
+# nonoverlapping_mrna <- read.csv("./Non_Overlapping_mRNA.tsv", sep="")
 # these nonoverlapping mRNAs will be used to filter out the overlapping mRNAs used in blast
-
 
 
 ################ get mRNA duplicates from blast outputs:
@@ -71,7 +75,7 @@ all_mRNA_orig <- nonoverlapping_mrna
 list <- read.table("./Individuals_List.txt", quote="\"", comment.char="")
 
 # create empty dataframe for output
-duplicates <- as.data.frame(matrix(ncol = 11, nrow = 0))
+duplicates <- as.data.frame(matrix(ncol = 12, nrow = 0))
 
 for (row_num in 1:nrow(list)){
   
@@ -89,7 +93,7 @@ for (row_num in 1:nrow(list)){
   blast_output[c('individual', 'subject_id')] <- str_split_fixed(blast_output$subject_id, '_', 2)
   blast_output$individual <- gsub('.fasta','',blast_output$individual)
   blast_output$query_id <- gsub(".*_ID=","ID=",blast_output$query_id)
-  blast_output <- blast_output[,c('query_id', 'individual', 'subject_id', 'perc_identity', 'alig_length','q_start', 'q_end', 's_start', 's_end', 'evalue', 'bitscore')]
+  blast_output <- blast_output[,c('query_id', 'individual', 'subject_id','perc_identity', 'alig_length','q_start', 'q_end', 's_start', 's_end', 'evalue', 'bitscore')]
   
   # keep blast hit only if the query_id (mrna) is in the non-overlapping mrna dataframe
   blast_output <- blast_output %>%
@@ -101,6 +105,10 @@ for (row_num in 1:nrow(list)){
   
   # remove overlapping blast hits 
   blast_output <- blast_output %>%
+    
+    # get strand hit is on  
+    mutate(strand = case_when(s_end < s_start ~ '-',
+                              s_end > s_start ~ '+')) %>%
     
     # if start coordinate is larger than end coordinate, flip:
     mutate(s_end_r = case_when(s_end > s_start ~ s_end,
@@ -136,6 +144,6 @@ for (row_num in 1:nrow(list)){
 
 # write duplicates to table 
 colnames(duplicates) <- colnames(blast_output)
-write.table(duplicates, './Blast_Outputs/Duplicates_from_Blast.tsv')
+write.table(duplicates, './Blast_Outputs/mRNA_raw_Duplicates_from_Blast.tsv')
 
   
