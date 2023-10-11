@@ -18,7 +18,7 @@ colnames(individual_expression_file) <- c('fly','expression_file','tissue')
 
 # get only the fly, chromosome, and coordinate, columns of both the gene and hit to get expression values for these ranges
 dups_1 <- dups[,c(1,4,6,7)]
-dups_2 <- dups[,c(1,4,11,12)]
+dups_2 <- dups[,c(1,9,11,12)]
 
 colnames(dups_1) <- c('fly','chrom','start','end')
 colnames(dups_2) <- c('fly','chrom','start','end')
