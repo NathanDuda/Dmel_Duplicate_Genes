@@ -1,6 +1,6 @@
 # Title: 6_sequences_of_duplicates.R
 # Author: Nathan Duda
-# Date: 10/8/2023
+# Date: 10/22/2023
 # Purpose: Extract sequences for each blast hit from the according chromosomes. 
 
 
@@ -14,16 +14,16 @@ dups <- dups[,c(1,2,3,12,8,9)]
 colnames(dups) <- c('gn_id','fly','hit_chrom','hit_strand','hit_start_on_chrom','hit_end_on_chrom')
 
 # read in mRNAs 
-mRNA <- read.csv("./Non_Overlapping_mRNA.tsv", sep="")
-mRNA <- mRNA[,c(7,2,1,9,4,5,6,8)]
+##mRNA <- read.csv("./Non_Overlapping_mRNA.tsv", sep="")
+##mRNA <- mRNA[,c(7,2,1,9,4,5,6,8)]
 
 # get reverse complement of mRNA sequences on the negative strand 
-mRNA <- mRNA %>% 
-  mutate(nuc_sequence = case_when(strand == '-' ~ seqRFLP::revComp(nuc_sequence),
-                                  strand == '+' ~ nuc_sequence))
-colnames(mRNA)[8] <- 'strand_nuc_sequence'
+##for (i in 1:nrow(mRNA)) {
+##  if (mRNA$strand[i] == '-') {mRNA$nuc_sequence[i] <- seqRFLP::revComp(mRNA$nuc_sequence[i])}
+##  else if (mRNA$strand[i] == '+') {mRNA$nuc_sequence[i] <- mRNA$nuc_sequence[i]}}
+##colnames(mRNA)[8] <- 'strand_nuc_sequence'
 
-#write.table(mRNA,'mRNA_Non_Overlapping_Strand_seq.tsv')
+##write.table(mRNA,'mRNA_Non_Overlapping_Strand_seq.tsv')
 mRNA <- read.csv("./mRNA_Non_Overlapping_Strand_seq.tsv", sep="")
 
 
@@ -46,23 +46,14 @@ dups <- dups %>%
   filter(is_between == F)
 
 
-# import chromosome sequences
-genomes <- readDNAStringSet("./Genome_Assemblies/All_Genome_Assemblies.fasta")
+# format mRNA dataframe to get information on gene hit 
+colnames(mRNA) <- c('gene_hit_id','fly','hit_chrom','gene_hit_FBgn','gene_hit_start','gene_hit_end','gene_hit_strand','gene_hit_strand_nuc_sequence')
+mRNA$hit_length <- mRNA$gene_hit_end - mRNA$gene_hit_start
 
-# get sequences of blast hits
+# get information on gene hit when blast hit to a gene or at most 1/4 of the gene lengths away from the starts/ends of the gene
 dups <- dups %>%
-  mutate(nuc_sequence = as.character(subseq(genomes[paste0(' ',fly,'.fasta_',hit_chrom, sep = '')],
-                                            start = hit_start_on_chrom, end = hit_end_on_chrom))) %>%
-  select(-is_between)
+  inner_join(mRNA, by = c('fly','hit_chrom')) %>%
+  filter((abs(hit_start_on_chrom - gene_hit_start) <= (hit_length * (1/4))) & (abs(hit_end_on_chrom - gene_hit_end) <=  (hit_length * (1/4))))
 
-# get reverse complement of duplicate sequences hit to negative strand 
-trash <- dups %>% 
-  mutate(nuc_sequence = case_when(hit_strand == '-' ~ seqRFLP::revComp(nuc_sequence),
-                                  hit_strand == '+' ~ nuc_sequence))
-colnames(dups)[13] <- 'hit_strand_nuc_sequence'
-
-# write to file
+# write to file 
 write.table(dups,'Duplicate_Sequences.tsv')
-# both nucleotide columns are the reverse complement where necessary, no further changes are needed
-
-
