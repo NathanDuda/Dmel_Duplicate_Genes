@@ -1,7 +1,7 @@
 # Title: 6_sequences_of_duplicates.R
 # Author: Nathan Duda
 # Date: 10/22/2023
-# Purpose: Extract sequences for each blast hit from the according chromosomes. 
+# Purpose: Get sequences and information for each blast hit that hit to a gene. 
 
 
 source("startup.R")
