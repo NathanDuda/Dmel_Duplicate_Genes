@@ -217,8 +217,9 @@ for (flyy in (unique(dups_orig$fly))){
     trash <- dups %>%
       inner_join(exon, by = c('hit_chrom','fly')) %>%
       filter((abs(hit_start_on_chrom - gene_hit_start) <= (hit_length * (1/4))) & (abs(hit_end_on_chrom - gene_hit_end) <=  (hit_length * (1/4))))
+    output <- rbind(output,trash)  
+    
   }
-  output <- rbind(output,trash)  
   print(flyy)
 }
 

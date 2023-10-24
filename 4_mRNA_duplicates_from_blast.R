@@ -28,7 +28,8 @@ nonoverlapping_mrna <- all_mRNA %>%
   ungroup()
 
 # extract FBgn into new column 
-nonoverlapping_mrna <- nonoverlapping_mrna %>% mutate(FBgn = sub(".*\\b(FBgn\\d{7})\\b.*", "\\1", id))
+nonoverlapping_mrna <- nonoverlapping_mrna %>% 
+  mutate(FBgn = sub(".*\\b(FBgn\\d{7})\\b.*", "\\1", id))
 
 # get lengths of sequences 
 nonoverlapping_mrna$nchar <- nchar(nonoverlapping_mrna$nuc_sequence)
@@ -100,8 +101,8 @@ for (row_num in 1:nrow(list)){
     filter(query_id %in% nonoverlapping_mrna$id)
   
   # keep only hits with percentage identity above 90 and alignment length above 300 nucleotides
-  blast_output <- blast_output[blast_output$perc_identity > 90,]
-  blast_output <- blast_output[blast_output$alig_length > 300,]
+  #blast_output <- blast_output[blast_output$perc_identity > 90,]
+  #blast_output <- blast_output[blast_output$alig_length > 300,]
   
   # remove overlapping blast hits 
   blast_output <- blast_output %>%
@@ -146,4 +147,3 @@ for (row_num in 1:nrow(list)){
 colnames(duplicates) <- colnames(blast_output)
 write.table(duplicates, './Blast_Outputs/mRNA_raw_Duplicates_from_Blast.tsv')
 
-  

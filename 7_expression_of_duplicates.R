@@ -7,7 +7,7 @@
 source("startup.R")
 
 # read in duplicates 
-dups <- read.csv("./Duplicate_Sequences.tsv", sep="")
+dups <- read.csv("./mRNA_Duplicate_Sequences.tsv", sep="")
 dups_orig <- dups
 
 # import dataframe with fly names, expression file names, and tissues
