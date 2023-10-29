@@ -7,16 +7,6 @@
 
 source("startup.R")
 
-# function to write table with gene ids and sequences into fasta format 
-format_protein_fasta <- function(gene_data) {
-  fasta_lines <- paste(
-    ">", gene_data$gene_group,
-    "\n", gene_data$prot,
-    sep = ""
-  )
-  return(paste(fasta_lines, collapse = "\n"))
-}
-
 # read in list with all fly names 
 fly_name_list <- read.table("./Individuals_List.txt", quote="\"", comment.char="")
 
@@ -30,7 +20,7 @@ for (row in 1:nrow(fly_name_list)){
   name <- fly_name_list[row,1]
   
   # import the dataframe 
-  aa <- read.csv(paste0("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Augustus_Output/aa_fastas/",name,"_aa.fasta"), sep="")
+  aa <- read.csv(paste0("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Augustus_Output/aa_fastas/",name,"_aa.fasta"), sep="", header = F)
   
   # format the fasta into a dataframe 
   colnames(aa) <- 'aa'
@@ -41,7 +31,8 @@ for (row in 1:nrow(fly_name_list)){
     ungroup() %>%
     select(-Group)
   aa[1,1] <- '>'
-  aa <- aa[aa$aa == '>',]
+  aa <- aa[grepl(">", aa$aa), ]
+  aa$aa <- '>'
   aa$prot <- gsub('>','',aa$prot)
   
   # get protein length
@@ -102,7 +93,12 @@ for (row in 1:nrow(fly_name_list)){
   # write proteins into fasta file 
   
   # Convert the dataframe to FASTA-like format
-  prot_fasta <- format_protein_fasta(annotations)
+  annotations_subset <- annotations[c('gene_group','prot')]
+  annotations_subset <- annotations_subset[!duplicated(annotations_subset),]
+  
+  prot_fasta <- character(nrow(annotations_subset) * 2)
+  prot_fasta[c(TRUE, FALSE)] <- paste0(">", annotations_subset$gene_group)
+  prot_fasta[c(FALSE, TRUE)] <- annotations_subset$prot
   
   # write into fasta file 
   writeLines(prot_fasta,paste0('./Prot_Fastas/',name,'_prot.fasta'))
