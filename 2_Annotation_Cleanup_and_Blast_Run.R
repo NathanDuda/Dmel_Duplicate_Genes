@@ -134,6 +134,8 @@ for (row in 1:nrow(fly_name_list)){
   metablastr::blast_protein_to_protein(file,file, search_type = 'protein_to_protein', 
                            output.path = "./Prot_Blast_Output/")
   
+  print(row)
+  
 }
 
 
