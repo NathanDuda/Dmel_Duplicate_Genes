@@ -13,6 +13,7 @@ source("startup.R")
 all_mRNA <- read.csv("./all_mRNA.tsv", sep="")
 
 # find overlapping mRNAs and mark them with TRUE in is_between and is_between_end columns
+'''
 nonoverlapping_mrna <- all_mRNA %>%
   group_by(chrom, fly) %>%
   arrange(start) %>%
@@ -26,7 +27,7 @@ nonoverlapping_mrna <- all_mRNA %>%
     end >= lead(start) & end <= lead(end) ~ T,
     T ~ F)) %>%
   ungroup()
-
+'''
 # extract FBgn into new column 
 nonoverlapping_mrna <- nonoverlapping_mrna %>% 
   mutate(FBgn = sub(".*\\b(FBgn\\d{7})\\b.*", "\\1", id))
@@ -35,6 +36,8 @@ nonoverlapping_mrna <- nonoverlapping_mrna %>%
 nonoverlapping_mrna$nchar <- nchar(nonoverlapping_mrna$nuc_sequence)
 
 # remove overlapping mrnas and keeping the longest ones 
+
+"""
 nonoverlapping_mrna <- nonoverlapping_mrna %>%
   group_by(chrom, fly, FBgn) %>%
   mutate(keep = case_when(is_between == F & is_between_end == F ~ 'yes',
@@ -43,6 +46,15 @@ nonoverlapping_mrna <- nonoverlapping_mrna %>%
                           is_between == T & is_between_end == F & nchar == max(nchar) ~ 'yes')) %>%
   ungroup() %>%
   na.omit() 
+"""
+###############################################################################
+trash_nonoverlapping_mrna <- nonoverlapping_mrna %>%
+  group_by(chrom, fly, FBgn) %>%
+  mutate(keep = case_when(nchar == max(nchar) ~ 'yes')) %>%
+  ungroup() %>%
+  na.omit() 
+##############################################################
+
 
 # keep only one random mrna when multiple are in the same exact spot
 nonoverlapping_mrna <- nonoverlapping_mrna %>%

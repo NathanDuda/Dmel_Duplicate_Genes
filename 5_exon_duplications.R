@@ -77,8 +77,8 @@ for (row_num in 1:nrow(list)){
     filter(query_id %in% nonoverlapping_exon$id)
   
   # keep only hits with percentage identity above 90 and alignment length above 300 nucleotides
-  blast_output <- blast_output[blast_output$perc_identity > 90,]
-  blast_output <- blast_output[blast_output$alig_length > 30,]
+  #blast_output <- blast_output[blast_output$perc_identity > 90,]
+  #blast_output <- blast_output[blast_output$alig_length > 30,]
   
   # remove overlapping blast hits 
   blast_output <- blast_output %>%
@@ -138,16 +138,15 @@ write.table(duplicates, './Blast_Outputs/exon_raw_Duplicates_from_Blast.tsv')
 
 
 
-
-
 #########################
 
 # read in genes with their blast hits 
 dups <- read.csv("./Blast_Outputs/exon_raw_Duplicates_from_Blast.tsv", sep="")
 
 # format the file 
-dups <- dups[,c(1,2,3,12,8,9)] 
-colnames(dups) <- c('gn_id','fly','hit_chrom','hit_strand','hit_start_on_chrom','hit_end_on_chrom')
+dups <- dups[,c(1,2,3,12,8,9,4,5)] 
+colnames(dups) <- c('gn_id','fly','hit_chrom','hit_strand','hit_start_on_chrom','hit_end_on_chrom',
+                    'percent_identity','align_length')
 
 # read in exons 
 ##exon <- read.csv("./Non_Overlapping_exon.tsv", sep="")
@@ -170,7 +169,7 @@ dups <- merge(dups, exon, by = c('gn_id','fly'))
 # cleaned out of the exon dataframe used here
 
 # format the merged dataframe 
-dups <- dups[,c(2,1,8,7,11,9,10,12,3:6)]
+dups <- dups[,c(2,1,13,14,11,9,10,12,3:6,7,8)]
 
 # remove duplicates that are inside their exon or hits to their exon 
 dups <- dups %>%
@@ -207,7 +206,7 @@ exon_orig <- exon
 dups <- dups_orig
 exon <- exon_orig
 
-output <- as.data.frame(matrix(ncol = 12, nrow = 0))
+output <- as.data.frame(matrix(ncol = 22, nrow = 0))
 
 for (flyy in (unique(dups_orig$fly))){
   for (chrom in (unique(dups_orig$hit_chrom))){
@@ -218,7 +217,6 @@ for (flyy in (unique(dups_orig$fly))){
       inner_join(exon, by = c('hit_chrom','fly')) %>%
       filter((abs(hit_start_on_chrom - gene_hit_start) <= (hit_length * (1/4))) & (abs(hit_end_on_chrom - gene_hit_end) <=  (hit_length * (1/4))))
     output <- rbind(output,trash)  
-    
   }
   print(flyy)
 }
@@ -227,7 +225,6 @@ colnames(output) <- colnames(trash)
 #
 
 # remove overlapping exon hits 
-
 output <- output %>%
   group_by(hit_chrom, fly) %>%
   arrange(gene_hit_start) %>%
