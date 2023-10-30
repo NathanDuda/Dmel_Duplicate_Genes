@@ -3,7 +3,18 @@
 
 
 
+
 source("startup.R")
+
+
+########
+# get FBgns
+
+
+
+#########
+
+
 
 # import my duplicate genes 
 dups <- read.csv("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Duplicate_Proteins.tsv", sep="")
