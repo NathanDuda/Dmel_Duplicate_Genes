@@ -23,7 +23,7 @@ for (row in 1:nrow(fly_name_list)){
   aa <- read.csv(paste0("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Augustus_Output/aa_fastas/",name,"_aa.fasta"), sep="", header = F)
   
   # format the fasta into a dataframe 
-  colnames(aa) <- 'aa'
+  colnames(aa)[1] <- 'aa'
   aa <- aa %>%
     mutate(Group = cumsum(grepl("^>", aa))) %>%
     group_by(Group) %>%
