@@ -40,6 +40,7 @@ gg <- ggplot(chrom_info,aes(x=length,y=n_genes,color=chrom)) +
   theme_bw() +
   xlab('Length') +
   ylab('Number of genes') +
+  guides(color = guide_legend(title = "Chromosome")) +
   geom_segment(y=mean(chrom_info[chrom_info$chrom=='2L',]$n_genes), 
                    yend=mean(chrom_info[chrom_info$chrom=='2L',]$n_genes), 
                    x=min(chrom_info[chrom_info$chrom=='2L',]$length), 
@@ -82,7 +83,7 @@ gg <- ggplot(chrom_info,aes(x=length,y=n_genes,color=chrom)) +
                    yend=min(chrom_info[chrom_info$chrom=='X',]$n_genes), 
                    x=mean(chrom_info[chrom_info$chrom=='X',]$length), 
                    xend=mean(chrom_info[chrom_info$chrom=='X',]$length), color = "#E76BF3") 
-    
+
 ggsave("./Plots/length_ngenes_scatter.jpg", plot = gg, width = 8, height = 6)
 
 
@@ -104,8 +105,8 @@ one_sided_chrom_matrix <- one_sided_chrom_matrix[!duplicated(one_sided_chrom_mat
 gg <- ggplot(one_sided_chrom_matrix,aes(x=chrom1,y=chrom2,fill=n)) +
   geom_tile() +
   theme_bw() +
-  xlab('') +
-  ylab('') +
+  xlab('Chromosome of duplicate 2') +
+  ylab('Chromosome of duplicate 1') +
   labs(fill = "Duplicates")
 
 ggsave("./Plots/chrom_dup_heatmap.jpg", plot = gg, width = 7, height = 5)
@@ -150,17 +151,23 @@ same_chrom <- same_chrom %>% select(-dist2)
 
 gg <- ggplot(same_chrom,aes(y=dist,x=dup1_chrom,color=dup1_chrom)) +
   geom_boxplot() +
-  xlab('Distance between duplicates') +
-  ylab('') +
+  ylab('Distance between duplicates') +
+  xlab('') +
   guides(color = guide_legend(title = "Chromosome")) +
   theme_bw() +
+  ggsignif::geom_signif(comparisons = list(c('X','2L'),c('X','2R'),c('X','3L'),c('X','3R')),
+                        map_signif_level = c('****'=0.0001,"***"=0.001, "**"=0.01, "*"=0.05),
+                        textsize = 6, 
+                        vjust = 0.5,
+                        y_position = c(3.5e+07,3.75e+07,4e+07,4.25e+07),
+                        test = 't.test') +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='2L',]$length), linewidth = 1.1, color = "#F8766D") +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='2R',]$length), linewidth = 1.1, color = "#A3A500") +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='3L',]$length), linewidth = 1.1, color = "#00BF7D") +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='3R',]$length), linewidth = 1.1, color = "#00B0F6") +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='X',]$length), linewidth = 1.1, color = "#E76BF3")
 
-ggsave("./Plots/chrom_dist_between_dups_boxplot.jpg", plot = gg, width = 7, height = 5)
+ggsave("./Plots/chrom_dist_between_dups_boxplot.jpg", plot = gg, width = 7, height = 8)
 
 
 # number of duplicates per chromosome in each fly 
@@ -183,8 +190,14 @@ gg <- ggplot(n_dups,aes(x=factor(chrom,levels=c('2L','2R','3L','3R','X','Total')
   theme_bw() +
   xlab('Chromosome') +
   ylab('Fly') +
+  labs(fill = "Number of Duplicates") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-ggsave("./Plots/dup_chrom_fly_heatmap.jpg", plot = gg, width = 6, height = 6)
+ggsave("./Plots/dup_chrom_fly_heatmap.jpg", plot = gg, width = 7, height = 6)
+
+
+
+
+
 
 
