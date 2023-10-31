@@ -1,4 +1,9 @@
-
+# Title: 7_FBgn_attachment.R
+# Author: Nathan Duda
+# Date: 10/31/2023
+# Purpose: Get FBgns for all my annotated genes.
+#          Make a list of all FBgns in my annotations, all FBgns in my duplicates,
+#          and all FBgns that are not duplicates.
 
 source("startup.R")
 
@@ -74,6 +79,9 @@ for (row in 1:nrow(fly_name_list)){
 # get FBgn for each pp
 my_FBgns <- merge(my_FBgns,fbgn_fbpp,by='FBpp')
 
+# write to table
+write.table(my_FBgns,'./gn_FBgn_FBpp.tsv')
+
 # extract the FBgns 
 FBgn <- my_FBgns[c('FBgn')]
 FBgn <- unique(FBgn)
@@ -83,135 +91,50 @@ write.table(FBgn, file = './FBgn_list.txt', sep = "\t", row.names = F, col.names
 
 
 
-
-
-
-
-###########################################################################################
-#
-
-any(duplicated(my_FBgns[c('gn','fly','FBgn')]))
-
-t <- as.data.frame(table(my_FBgns$fly))
-any(duplicated(my_FBgns[c('fly','FBgn')])) # T
-any(duplicated(my_FBgns[c('fly','gn')]))   # F
-# so multiple of my gn's hits to the same FBgn occasionally 
-
-t <- my_FBgns[(duplicated(my_FBgns[c('fly','FBgn')])),]
-
-
-n_of_my_gns_hit_to_FBgn <- as.data.frame(table(t$fly,t$FBgn))
-n_of_my_gns_hit_to_FBgn[n_of_my_gns_hit_to_FBgn$Freq==0,] <- NA
-n_of_my_gns_hit_to_FBgn <- na.omit(n_of_my_gns_hit_to_FBgn)
-
-length(unique(my_FBgns$FBgn))
-
+#############
+# get FBgns for my duplicates 
 
 # import my duplicate genes 
 dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
 
-
-
+#dup_FBgns_orig <- my_FBgns
+dup_FBgns <- dup_FBgns_orig
 
 
 # merge FBgns with dups dataframe
-
-dup_FBgns <- dup_FBgns_orig
 
 # remove duplicates caused by multiple FBpp per FBgn
 dup_FBgns <- dup_FBgns[!duplicated(dup_FBgns[c('gn','fly','FBgn')]),]
 dup_FBgns <- dup_FBgns[c('gn','fly','FBgn')]
 
 colnames(dup_FBgns) <- c('dup1','fly','dup1_FBgn')
-t <- merge(dups,dup_FBgns,by=c('dup1','fly'))
+dups <- left_join(dups,dup_FBgns,by=c('dup1','fly'))
 
-colnames(dup_FBgns) <- c('dup2','fly','dup1_FBgn')
-t <- merge(dups,dup_FBgns,by=c('dup2','fly'))
-
-
+colnames(dup_FBgns) <- c('dup2','fly','dup2_FBgn')
+dups <- left_join(dups,dup_FBgns,by=c('dup2','fly'))
 
 
-flybase <- read_delim("FlyBase_Fields_download.txt", delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+# get a list of FBgns of just the duplicates
+
+dup1_fbgn <- dups[c('dup1_FBgn')]
+dup2_fbgn <- dups[c('dup2_FBgn')]
+
+colnames(dup1_fbgn) <- 'FBgn'
+colnames(dup2_fbgn) <- 'FBgn'
+
+dup_fbgn <- rbind(dup1_fbgn,dup2_fbgn)
+
+dup_fbgn <- dup_fbgn[!duplicated(dup_fbgn),]
+dup_fbgn <- as.data.frame(dup_fbgn)
+
+# write a list of FBgns of duplicates 
+write.table(dup_fbgn, file = './Dup_FBgn_list.txt', sep = "\t", row.names = F, col.names = F, quote = F)
 
 
+# get a list of FBgns of not duplicates 
+nondup_fbgn <- dup_fbgn[!(FBgn$FBgn %in% dup_fbgn$dup_fbgn),]
+nondup_fbgn <- na.omit(as.data.frame(nondup_fbgn))
 
-#############
-# get FBgn for the duplicates FBpps
-t <- merge(my_FBgns,fbgn_fbpp,by='FBpp')
-
-
-for (row in 1:nrow(fly_name_list)){
-  
-  # get name of current fly 
-  name <- fly_name_list[row,1]
-  
-  lenn <- as.character(length(unique(t[t$fly == name,]$FBgn)))
-  print(paste0(lenn,'   ',name))
-  
-}
-
-# ~13,400 for each fly 
-
-
-##
-
-###################
-
-
-
-all_genes <- read.csv("./Annotations_Gene.tsv", sep="")
-
-t <- as.data.frame(table(all_genes$fly))
-
-#
-drosomics_genes <- read.delim("./Drosomics_Annotated_Genes.gff3", header=FALSE, comment.char="#")
-
-# remove unnecessary characters 
-drosomics_genes$V2 <- gsub('.gff3','',drosomics_genes$V2)
-drosomics_genes$V2 <- gsub('Liftoff ','',drosomics_genes$V2)
-drosomics_genes <- drosomics_genes[,c(1:5,7,9)]
-colnames(drosomics_genes) <- c('chrom','fly','type','start','end','strand','id')
-
-
-fb_drosomics <- drosomics_genes[drosomics_genes$fly == 'FlyBase',]
-# keep only types: gene, mRNA, exon, CDS, and keep only chromosomes: 2L, 2R, 3L, 3R, X, and remove flybase fly
-drosomics_genes <- drosomics_genes %>% 
-  filter(type == 'gene') %>%
-  filter(chrom %in% c('2L','2R','3L','3R','X')) %>%
-  filter(!fly %in% c('FlyBase'))
-#
-
-perfect_my_drosomics_genes <- merge(all_genes,drosomics_genes,
-                                    by=c('chrom','fly','start','end','strand'))
-
-#############
-
-
-
-
-
-all_annotations <- read.csv("./Annotations.tsv", sep="")
-cds <- all_annotations[all_annotations$type == 'start_codon',]
-t <- as.data.frame(table(cds$fly))
-
-
-all_genes <- read.csv("./Annotations_Gene.tsv", sep="")
-length(unique(all_genes$gene_group))
-t <- as.data.frame(table(all_genes$fly))
-
-# import chromosomes for every fly
-genomes <- readDNAStringSet("./Genome_Assemblies/All_Genome_Assemblies.fasta")
-
-# get chromosome lengths
-chrom_lengths <- data.frame(chrom = names(genomes), length = width(genomes))
-chrom_lengths <- chrom_lengths %>% 
-  separate(chrom, into = c("fly", "chrom"), sep = ".fasta_")
-
-genome_lengths <- chrom_lengths %>%
-  group_by(fly) %>%
-  summarise(total_length = sum(length))
-
-
-############################################################
-
+# write a list of FBgns of that are not duplicates 
+write.table(nondup_fbgn, file = './ NonDup_FBgn_list.txt', sep = "\t", row.names = F, col.names = F, quote = F)
 
