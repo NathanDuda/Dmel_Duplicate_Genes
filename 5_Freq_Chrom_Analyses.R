@@ -10,6 +10,9 @@ source("startup.R")
 # import my duplicate genes 
 dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
 
+# remove the crappy assemblies
+dups <- dups[!dups$fly %in% c('I23','ZH26','N25','T29A','B59'),]
+
 # import chromosomes for every fly
 genomes <- readDNAStringSet("./Genome_Assemblies/All_Genome_Assemblies.fasta")
 
@@ -24,6 +27,9 @@ chrom_lengths$fly <- trimws(chrom_lengths$fly)
 
 # import annotations for all flies 
 all_annotations <- read.csv("./Annotations_Gene.tsv", sep="")
+
+# remove the crappy assemblies
+all_annotations <- all_annotations[!all_annotations$fly %in% c('I23','ZH26','N25','T29A','B59'),]
 
 # get the number of genes on each chromosome for each fly 
 chrom_gene_counts <- as.data.frame(table(all_annotations$chrom,all_annotations$fly))
@@ -95,7 +101,7 @@ longest_chroms <- chrom_info %>%
 
 outlier_threshold = 2.5
 
-chrom_info <- chrom_info_orig
+#chrom_info <- chrom_info_orig
 
 chrom_info <- chrom_info %>%
   group_by(chrom) %>%
@@ -205,7 +211,7 @@ plot_freq_dist <- as.data.frame(table(plot_freq_dist$Freq))
 
 gg <- ggplot(plot_freq_dist,aes(x=Var1,y=Freq)) +
   geom_bar(stat='identity') +
-  scale_x_discrete(limits=factor(1:52)) +
+  #scale_x_discrete(limits=factor(1:52)) + # not 52 without crappy assemblies 
   xlab('Number of flies duplicate is present in') +
   ylab('Freq') +
   theme_bw()
@@ -269,10 +275,6 @@ gg <- ggplot(n_dups,aes(x=factor(chrom,levels=c('2L','2R','3L','3R','X','Total')
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 ggsave("./Plots/dup_chrom_fly_heatmap.jpg", plot = gg, width = 7, height = 6)
-
-
-
-
 
 
 

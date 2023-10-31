@@ -82,6 +82,12 @@ FBgn <- unique(FBgn)
 write.table(FBgn, file = './FBgn_list.txt', sep = "\t", row.names = F, col.names = F, quote = F)
 
 
+
+
+
+
+
+###########################################################################################
 #
 
 any(duplicated(my_FBgns[c('gn','fly','FBgn')]))
