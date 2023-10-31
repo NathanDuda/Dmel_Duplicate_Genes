@@ -8,7 +8,7 @@
 source("startup.R")
 
 # import my duplicate genes 
-dups <- read.csv("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Duplicate_Proteins.tsv", sep="")
+dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
 
 # import chromosomes for every fly
 genomes <- readDNAStringSet("./Genome_Assemblies/All_Genome_Assemblies.fasta")
@@ -23,9 +23,7 @@ chrom_lengths$fly <- trimws(chrom_lengths$fly)
 
 
 # import annotations for all flies 
-all_annotations <- read.csv("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Annotations.tsv", sep="")
-# keep only the full gene information 
-all_annotations <- all_annotations[all_annotations$type=='gene',]
+all_annotations <- read.csv("./Annotations_Gene.tsv", sep="")
 
 # get the number of genes on each chromosome for each fly 
 chrom_gene_counts <- as.data.frame(table(all_annotations$chrom,all_annotations$fly))
@@ -35,6 +33,9 @@ colnames(chrom_gene_counts) <- c('chrom','fly','n_genes')
 chrom_info <- merge(chrom_lengths,chrom_gene_counts,by=c('chrom','fly'))
 
 # plot the number of genes on a chromosome versus the chromosomes length
+
+chrom_info <- chrom_info[!chrom_info$fly %in% c('I23','ZH26','N25','T29A','B59'),]
+
 gg <- ggplot(chrom_info,aes(x=length,y=n_genes,color=chrom)) +
   geom_point() +
   theme_bw() +
@@ -85,6 +86,80 @@ gg <- ggplot(chrom_info,aes(x=length,y=n_genes,color=chrom)) +
                    xend=mean(chrom_info[chrom_info$chrom=='X',]$length), color = "#E76BF3") 
 
 ggsave("./Plots/length_ngenes_scatter.jpg", plot = gg, width = 8, height = 6)
+
+########################################
+longest_chroms <- chrom_info %>%
+  group_by(chrom) %>%
+  filter(length == max(length))
+
+
+outlier_threshold = 2.5
+
+chrom_info <- chrom_info_orig
+
+chrom_info <- chrom_info %>%
+  group_by(chrom) %>%
+  mutate(length_outlier = ifelse(abs(length - median(length)) > outlier_threshold * IQR(length), "Outlier", "Not Outlier")) %>%
+  mutate(n_genes_outlier = ifelse(abs(n_genes - median(n_genes)) > outlier_threshold * IQR(n_genes), "Outlier", "Not Outlier")) %>%
+  mutate(outlier = case_when(n_genes_outlier == 'Outlier' | length_outlier == 'Outlier' ~ 'Outlier',
+                             n_genes_outlier == 'Not Outlier' & length_outlier == 'Not Outlier' ~ 'Not Outlier'))
+
+unique(chrom_info[chrom_info$outlier == 'Outlier',]$fly)
+
+chrom_info <- chrom_info[!chrom_info$fly %in% (chrom_info[chrom_info$outlier == 'Outlier',]$fly),]
+
+
+
+ggplot(chrom_info,aes(x=length,y=n_genes,color=chrom)) + 
+  geom_point() +
+  theme_bw() +
+  xlab('Length') +
+  ylab('Number of genes') +
+  guides(color = guide_legend(title = "Chromosome")) +
+  geom_segment(y=mean(chrom_info[chrom_info$chrom=='2L',]$n_genes), 
+               yend=mean(chrom_info[chrom_info$chrom=='2L',]$n_genes), 
+               x=min(chrom_info[chrom_info$chrom=='2L',]$length), 
+               xend=max(chrom_info[chrom_info$chrom=='2L',]$length), color = "#F8766D") +
+  geom_segment(y=mean(chrom_info[chrom_info$chrom=='2R',]$n_genes), 
+               yend=mean(chrom_info[chrom_info$chrom=='2R',]$n_genes), 
+               x=min(chrom_info[chrom_info$chrom=='2R',]$length), 
+               xend=max(chrom_info[chrom_info$chrom=='2R',]$length), color = "#A3A500") +
+  geom_segment(y=mean(chrom_info[chrom_info$chrom=='3L',]$n_genes), 
+               yend=mean(chrom_info[chrom_info$chrom=='3L',]$n_genes), 
+               x=min(chrom_info[chrom_info$chrom=='3L',]$length), 
+               xend=max(chrom_info[chrom_info$chrom=='3L',]$length), color = "#00BF7D") +
+  geom_segment(y=mean(chrom_info[chrom_info$chrom=='3R',]$n_genes), 
+               yend=mean(chrom_info[chrom_info$chrom=='3R',]$n_genes), 
+               x=min(chrom_info[chrom_info$chrom=='3R',]$length), 
+               xend=max(chrom_info[chrom_info$chrom=='3R',]$length), color = "#00B0F6") +
+  geom_segment(y=mean(chrom_info[chrom_info$chrom=='X',]$n_genes), 
+               yend=mean(chrom_info[chrom_info$chrom=='X',]$n_genes), 
+               x=min(chrom_info[chrom_info$chrom=='X',]$length), 
+               xend=max(chrom_info[chrom_info$chrom=='X',]$length), color = "#E76BF3") +
+  
+  
+  geom_segment(y=max(chrom_info[chrom_info$chrom=='2L',]$n_genes), 
+               yend=min(chrom_info[chrom_info$chrom=='2L',]$n_genes), 
+               x=mean(chrom_info[chrom_info$chrom=='2L',]$length), 
+               xend=mean(chrom_info[chrom_info$chrom=='2L',]$length), color = "#F8766D") +
+  geom_segment(y=max(chrom_info[chrom_info$chrom=='2R',]$n_genes), 
+               yend=min(chrom_info[chrom_info$chrom=='2R',]$n_genes), 
+               x=mean(chrom_info[chrom_info$chrom=='2R',]$length), 
+               xend=mean(chrom_info[chrom_info$chrom=='2R',]$length), color = "#A3A500") +
+  geom_segment(y=max(chrom_info[chrom_info$chrom=='3L',]$n_genes), 
+               yend=min(chrom_info[chrom_info$chrom=='3L',]$n_genes), 
+               x=mean(chrom_info[chrom_info$chrom=='3L',]$length), 
+               xend=mean(chrom_info[chrom_info$chrom=='3L',]$length), color = "#00BF7D") +
+  geom_segment(y=max(chrom_info[chrom_info$chrom=='3R',]$n_genes), 
+               yend=min(chrom_info[chrom_info$chrom=='3R',]$n_genes), 
+               x=mean(chrom_info[chrom_info$chrom=='3R',]$length), 
+               xend=mean(chrom_info[chrom_info$chrom=='3R',]$length), color = "#00B0F6") +
+  geom_segment(y=max(chrom_info[chrom_info$chrom=='X',]$n_genes), 
+               yend=min(chrom_info[chrom_info$chrom=='X',]$n_genes), 
+               x=mean(chrom_info[chrom_info$chrom=='X',]$length), 
+               xend=mean(chrom_info[chrom_info$chrom=='X',]$length), color = "#E76BF3") 
+
+########################################
 
 
 # chromosomal location heatmap 

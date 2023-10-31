@@ -116,4 +116,3 @@ for (row in 1:nrow(fly_name_list)){
 
 # write to table
 write.table(all_annotations,'Annotations.tsv')
-

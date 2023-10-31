@@ -8,10 +8,11 @@
 source("startup.R")
 
 # import annotations for all flies 
-all_annotations <- read.csv("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Annotations.tsv", sep="")
+all_annotations <- read.csv("./Annotations.tsv", sep="")
 
 # keep only the full gene information 
 all_annotations <- all_annotations[all_annotations$type=='gene',]
+write.table(all_annotations,file='Annotations_Gene.tsv')
 
 # make sure no genes overlap
 nonoverlapping_all_annotations <- all_annotations %>%
@@ -42,16 +43,17 @@ for (row in 1:nrow(fly_name_list)){
   # get name of current fly 
   name <- fly_name_list[row,1]
   
-  blastp <- read.delim(paste0("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Prot_Blast_Output/",name,"_blastp.tsv"), header=FALSE)
+  blastp <- read.delim(paste0("./Prot_Blast_Output/",name,"_blastp.tsv"), header=FALSE)
   
   colnames(blastp) <- c('qseqid','sseqid','length','qstart','qend','qlen','sstart','send','slen','pident','evalue')
   
   # remove hits to itself
   blastp <- blastp[blastp$qseqid != blastp$sseqid,]
   
-  # filter out hits with percentage identity lower than 90 and length lower than 100 aa
+  # filter out hits with percentage identity lower than or equal to 99 and 
+  # length lower than or equal to 100 aa
   blastp <- blastp %>% 
-    filter((length > 100) & (pident > 90))
+    filter((length >= 100) & (pident >= 99))
   
   # keep only the longest hit for same hits 
   blastp <- blastp %>% 
