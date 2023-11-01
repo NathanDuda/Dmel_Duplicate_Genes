@@ -62,11 +62,11 @@ for (row in 1:nrow(fly_name_list)){
   colnames(blastp_FBgn) <- c('gn','FBpp','evalue')
   
   # keep only highest evalue blast
-  blastp_FBgn <- blastp_FBgn %>%
-    group_by(gn) %>%
-    filter(evalue == min(evalue)) %>%
-    ungroup() %>%
-    distinct(gn,evalue, .keep_all = T) # keep only one if lowest evalue is same for multiple 
+  #blastp_FBgn <- blastp_FBgn %>%
+  #  group_by(gn) %>%
+  #  filter(evalue == min(evalue)) %>%
+  #  ungroup() %>%
+  #  distinct(gn,evalue, .keep_all = T) # keep only one if lowest evalue is same for multiple 
 
   # combine all genes with their FBgns into dataframe 
   blastp_FBgn$fly <- name
@@ -78,6 +78,12 @@ for (row in 1:nrow(fly_name_list)){
 
 # get FBgn for each pp
 my_FBgns <- merge(my_FBgns,fbgn_fbpp,by='FBpp')
+
+length(unique(my_FBgns$FBgn))
+length(unique(my_FBgns$gn))
+
+length(unique(fbgn_fbpp$FBgn))
+
 
 # write to table
 write.table(my_FBgns,'./gn_FBgn_FBpp.tsv')

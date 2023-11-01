@@ -169,7 +169,66 @@ ggplot(chrom_info,aes(x=length,y=n_genes,color=chrom)) +
 
 
 # chromosomal location heatmap 
-chrom_matrix <- as.data.frame(table(dups$dup1_chrom,dups$dup2_chrom))
+chrom_matrix <- as.data.frame(table(dups$dup_chrom,dups$dup_family,dups$fly))
+
+colnames(chrom_matrix) <- c('chrom','dup_family','fly','Freq')
+
+
+# number of unique duplicate families 
+dup_fams <- chrom_matrix %>%
+  mutate(Freq = case_when(Freq == 0 ~ NA,
+         T ~ Freq)) %>%
+  na.omit() %>%
+  group_by(chrom,fly) %>%
+  summarize(Freq=length(unique(dup_family)), .groups = 'keep')
+
+gg <- ggplot(dup_fams,aes(x=fly,y=chrom,fill=Freq)) +
+  geom_tile() +
+  theme_bw() + 
+  xlab('') +
+  ylab('') +
+  labs(fill = "Dup Families")
+  
+ggsave("./Plots/trash.jpg", plot = gg, width = 10, height = 8)
+
+
+# total number of copies 
+copies <- chrom_matrix %>%
+  group_by(chrom,fly) %>%
+  summarize(Freq=sum(Freq), .groups = 'keep')
+
+gg <- ggplot(copies,aes(x=fly,y=chrom,fill=Freq)) +
+  geom_tile() +
+  theme_bw() + 
+  xlab('') +
+  ylab('') +
+  labs(fill = "Copies    a")
+  
+ggsave("./Plots/trash2.jpg", plot = gg, width = 10, height = 8)
+
+
+# average copies per family 
+copies_per_fam <- copies
+copies_per_fam$Freq <- copies_per_fam$Freq / dup_fams$Freq
+
+gg <- ggplot(copies_per_fam,aes(x=fly,y=chrom,fill=Freq)) +
+  geom_tile() +
+  theme_bw() + 
+  xlab('') +
+  ylab('') +
+  labs(fill = "Avg copies per fam")
+
+ggsave("./Plots/trash3.jpg", plot = gg, width = 10, height = 8)
+
+
+
+
+
+#
+
+
+
+
 
 chrom_matrix <- as.data.frame(pivot_wider(chrom_matrix,names_from = 'Var2', values_from = 'Freq'))
 rownames(chrom_matrix) <- chrom_matrix$Var1
@@ -220,15 +279,15 @@ ggsave("./Plots/freq_distribution_barplot.jpg", plot = gg, width = 10, height = 
 
 
 # distance when on same chrom
-same_chrom <- dups[dups$dup1_chrom == dups$dup2_chrom,]
-same_chrom$dist <- same_chrom$dup1_end_on_chrom - same_chrom$dup2_start_on_chrom
-same_chrom$dist2 <- same_chrom$dup2_end_on_chrom - same_chrom$dup1_start_on_chrom
+dups <- dups %>%
+  mutate(same_chrom = case_when(dup1_chrom == dup2_chrom ~ 'same_chrom',
+                                dup1_chrom != dup2_chrom ~ 'diff_chrom')) %>%
+  mutate(dist = case_when((same_chrom=='same_chrom') & (dup1_start_on_chrom > dup2_start_on_chrom) ~ (dup1_start_on_chrom - dup2_end_on_chrom),
+                          (same_chrom=='same_chrom') & (dup2_start_on_chrom > dup1_start_on_chrom) ~ (dup2_start_on_chrom - dup1_end_on_chrom)))
+write.table(dups,'Duplicate_Proteins_2.tsv')
 
-same_chrom$dist[same_chrom$dist < 0] <- NA
-same_chrom$dist2[same_chrom$dist2 < 0] <- NA
 
-same_chrom$dist <- coalesce(same_chrom$dist,same_chrom$dist2)
-same_chrom <- same_chrom %>% select(-dist2)
+same_chrom <- dups[dups$same_chrom == 'same_chrom',]
 
 gg <- ggplot(same_chrom,aes(y=dist,x=dup1_chrom,color=dup1_chrom)) +
   geom_boxplot() +

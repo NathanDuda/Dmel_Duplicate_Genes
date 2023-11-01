@@ -20,7 +20,7 @@ for (row in 1:nrow(fly_name_list)){
   name <- fly_name_list[row,1]
   
   # import the dataframe 
-  aa <- read.csv(paste0("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Augustus_Output/aa_fastas/",name,"_aa.fasta"), sep="", header = F)
+  aa <- read.csv(paste0("./Augustus_Output/aa_fastas/",name,"_aa.fasta"), sep="", header = F)
   
   # format the fasta into a dataframe 
   colnames(aa)[1] <- 'aa'
@@ -40,7 +40,7 @@ for (row in 1:nrow(fly_name_list)){
   
   
   # import the number of genes on each chromosome to get the chromosomes of each gene (since theyre in order)
-  aa_per_chrom <- read.table(paste0("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Augustus_Output/aa_per_chrom/",name,"_aa_per_chrom.txt"), quote="\"", comment.char="")
+  aa_per_chrom <- read.table(paste0("./Augustus_Output/aa_per_chrom/",name,"_aa_per_chrom.txt"), quote="\"", comment.char="")
   aa_per_chrom[aa_per_chrom$V1 == 0,] <- NA
   aa_per_chrom <- na.omit(aa_per_chrom)
   
@@ -53,7 +53,7 @@ for (row in 1:nrow(fly_name_list)){
   
   
   # import annotation output from augustus
-  annotations <- read.delim(paste0("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Augustus_Output/",name,"_annotations.gff"), header=FALSE, comment.char="#")
+  annotations <- read.delim(paste0("./Augustus_Output/",name,"_annotations.gff"), header=FALSE, comment.char="#")
   
   # format the annotation dataframe
   annotations <- annotations[,-c(1,2)]
