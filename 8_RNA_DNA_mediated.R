@@ -22,23 +22,26 @@ genes_w_introns <- genes_w_introns[!duplicated(genes_w_introns),]
 dups <- read.csv("./Duplicate_Proteins_2.tsv", sep="")
 
 # get intron presence information for my duplicates 
-colnames(genes_w_introns) <- c('dup1','fly','dup1_intron','dup1_chrom')
-dups <- left_join(dups,genes_w_introns,by=c('fly','dup1','dup1_chrom'))
-dups$dup1_intron[is.na(dups$dup1_intron)] <- 'no_intron'
-
-colnames(genes_w_introns) <- c('dup2','fly','dup2_intron','dup2_chrom')
-dups <- left_join(dups,genes_w_introns,by=c('fly','dup2','dup2_chrom'))
-dups$dup2_intron[is.na(dups$dup2_intron)] <- 'no_intron'
+colnames(genes_w_introns) <- c('dup','fly','dup_intron','dup_chrom')
+dups <- left_join(dups,genes_w_introns,by=c('fly','dup','dup_chrom'))
+dups$dup_intron[is.na(dups$dup_intron)] <- 'no_intron'
 
 # classify the duplicates into a mechanism using the introns
 dups <- dups %>%
-  mutate(mech = case_when((dup1_intron == 'intron') & (dup2_intron == 'intron') ~ 'DNA',
-                          (dup1_intron == 'no_intron') & (dup2_intron == 'intron') ~ 'RNA',
-                          (dup1_intron == 'intron') & (dup2_intron == 'no_intron') ~ 'RNA',
-                          (dup1_intron == 'no_intron') & (dup2_intron == 'no_intron') ~ 'unk'))
+  group_by(dup_family_fly) %>%
+  mutate(mech = case_when(
+    all(dup_intron == "intron") ~ "dna",
+    any(dup_intron == "intron") & any(dup_intron == "no_intron") ~ "rna",
+    all(dup_intron == "no_intron") ~ "unknown",
+    TRUE ~ NA)) %>%
+  ungroup()
+
+
+mech <- unique(dups[c('dup_family_fly','mech','fly')])
+
 
 # make a pie chart of all the duplication mechanisms 
-mech <- as.data.frame(table(dups$mech))
+mech <- as.data.frame(table(mech$mech))
 
 ggplot(mech, aes(x="", y=Freq, group=Var1, fill=Var1)) +
   geom_bar(width = 1, stat = "identity", position = position_fill()) +
@@ -48,8 +51,11 @@ ggplot(mech, aes(x="", y=Freq, group=Var1, fill=Var1)) +
   theme(legend.title = element_blank()) +
   coord_polar("y") 
 
+
 # compare the duplication mechanisms between flies 
-mech_per_fly <- as.data.frame(table(dups$mech,dups$fly))
+mech_per_fly <- dups[c('mech','fly','dup_family')]
+mech_per_fly <- mech_per_fly[!duplicated(mech_per_fly[c('mech','dup_family','fly')]),]
+mech_per_fly <- as.data.frame(table(mech_per_fly$mech,mech_per_fly$fly))
 colnames(mech_per_fly) <- c('mech','fly','n')
 
 
@@ -61,79 +67,36 @@ ggplot(mech_per_fly,aes(y=fly,x=mech,fill=n)) +
   labs(fill='Number of Duplicates')
 
 
+# mech for families with all copies on same chromosome versus copies on different chromosomes
+mech_chrom <- unique(dups[c('dup_family_fly','mech','same_chrom_fam')])
 
-# get paralog families
+mech_chrom <- as.data.frame(table(mech_chrom$mech,mech_chrom$same_chrom_fam))
 
-dups_ids <- dups[c('dup1','dup2')]
+colnames(mech_chrom) <- c('mech','same_chrom','Freq')
 
-
-network <- igraph::graph.data.frame(dups_ids, directed = FALSE)
-
-
-plot(network, layout = layout.fruchterman.reingold)
-
-network_connections <- dups_ids %>%
-  rownames_to_column(var = "Connection") %>%
-  gather(key = "Direction", value = "Node", -Connection)
-
-# Reorder the columns to have "Connection" first, then "Direction", and finally "Node"
-network_connections <- network_connections[, c("Connection", "Direction", "Node")]
-
-print(network_connections)
-
+ggplot(mech_chrom, aes(x="", y=Freq, group=same_chrom, fill=same_chrom)) +
+  geom_bar(width = 1, stat = "identity", position = position_fill()) +
+  geom_text(aes(label = Freq), position = position_fill(vjust = 0.5), colour = 'black', size = 3) +
+  facet_grid(.~factor(mech)) + 
+  theme_void() +
+  theme(legend.title = element_blank()) +
+  coord_polar("y") 
 
 
 #
 
 
+t <- as.data.frame(table(dups$dup_family_fly))
+t <- as.data.frame(table(t$Freq))
+max(t$Freq) / sum(t$Freq)
 
 
+colnames(t) <- c('n_dups_in_fam','number_of_families_with')
 
-
-#################
-t <- pivot_wider(mech_per_fly,names_from = 'mech',values_from = 'n')
-
-t$dna_to_rna_ratio <- t$DNA / t$RNA
-
-
-ratio <- t[c('fly','dna_to_rna_ratio')]
-ratio$x <- 'dna_to_rna_ratio'
-
-ggplot(ratio,aes(y=fly,x=x,fill=dna_to_rna_ratio)) +
-  geom_tile()
-
-
-
-same_chrom <- dups[dups$same_chrom == 'same_chrom',]
-
-ggplot(same_chrom,aes(x=mech,y=dist)) +
-  geom_boxplot()
-
-
-
-table(dups$same_chrom,dups$mech)
-
-#             DNA     RNA     unk
-# diff_chrom  71,703  14,237  4,314
-# same_chrom  29,896  5,691   6,501
-
-
-trash <- as.data.frame(table(dups$same_chrom,dups$mech,dups$dup1_chrom,dups$dup2_chrom))
-
-
-
-
-s <- genes_w_introns_orig
-
-
-s <- s[s$type %in% c('start_codon','stop_codon','intron'),]
-s2 <- s %>%
-  group_by(gene_group,fly) %>%
-  filter((type == "intron" & strand == '+' & (lag(type == "stop_codon") | lead(type == "start_codon"))) |
-         (type == "intron" & strand == '-' & (lag(type == "start_codon") | lead(type == "stop_codon"))))
-
-
-
+ggplot(t, aes(x=n_dups_in_fam,y=number_of_families_with)) +
+  geom_bar(stat='identity') +
+  scale_x_discrete(limits=factor(2:40)) +
+  theme_bw()
 
 
 

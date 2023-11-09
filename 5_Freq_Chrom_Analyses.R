@@ -174,22 +174,24 @@ chrom_matrix <- as.data.frame(table(dups$dup_chrom,dups$dup_family,dups$fly))
 colnames(chrom_matrix) <- c('chrom','dup_family','fly','Freq')
 
 
-# number of unique duplicate families 
-dup_fams <- chrom_matrix %>%
+# number of unique duplicate families per chrom
+dup_fams_chrom <- chrom_matrix %>%
   mutate(Freq = case_when(Freq == 0 ~ NA,
          T ~ Freq)) %>%
   na.omit() %>%
   group_by(chrom,fly) %>%
   summarize(Freq=length(unique(dup_family)), .groups = 'keep')
 
-gg <- ggplot(dup_fams,aes(x=fly,y=chrom,fill=Freq)) +
-  geom_tile() +
-  theme_bw() + 
-  xlab('') +
-  ylab('') +
-  labs(fill = "Dup Families")
-  
-ggsave("./Plots/trash.jpg", plot = gg, width = 10, height = 8)
+# number of unique duplicate families 
+dup_fams <- chrom_matrix %>%
+  mutate(Freq = case_when(Freq == 0 ~ NA,
+                          T ~ Freq)) %>%
+  na.omit() %>%
+  group_by(chrom,fly) %>%
+  summarize(Freq=length(unique(dup_family)), .groups = 'keep') %>%
+  ungroup() %>%
+  group_by(fly) %>%
+  summarize(Freq=sum(Freq))
 
 
 # total number of copies 
@@ -197,76 +199,83 @@ copies <- chrom_matrix %>%
   group_by(chrom,fly) %>%
   summarize(Freq=sum(Freq), .groups = 'keep')
 
-gg <- ggplot(copies,aes(x=fly,y=chrom,fill=Freq)) +
-  geom_tile() +
-  theme_bw() + 
-  xlab('') +
-  ylab('') +
-  labs(fill = "Copies    a")
-  
-ggsave("./Plots/trash2.jpg", plot = gg, width = 10, height = 8)
-
-
 # average copies per family 
 copies_per_fam <- copies
-copies_per_fam$Freq <- copies_per_fam$Freq / dup_fams$Freq
+copies_per_fam$Freq <- copies_per_fam$Freq / dup_fams_chrom$Freq
 
 gg <- ggplot(copies_per_fam,aes(x=fly,y=chrom,fill=Freq)) +
   geom_tile() +
   theme_bw() + 
   xlab('') +
   ylab('') +
-  labs(fill = "Avg copies per fam")
+  labs(fill = "Avg copies per fam") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-ggsave("./Plots/trash3.jpg", plot = gg, width = 10, height = 8)
-
-
+ggsave("./Plots/copies_per_dup_fam_heatmap.jpg", plot = gg, width = 10, height = 3)
 
 
 
 #
+#chrom_matrix <- chrom_matrix_orig
+
+chrom_matrix$dup_family_fly <- paste0(chrom_matrix$dup_family, '_', chrom_matrix$fly)
+
+chrom_matrix <- chrom_matrix %>% arrange(Freq)
 
 
+ggplot(chrom_matrix, aes(fill=chrom, y=Freq, x=fly)) + 
+  geom_bar(position="dodge", stat="identity") 
 
 
+ggplot(chrom_matrix, aes(fill=chrom, y=Freq, x=fly)) + 
+  geom_bar(position="stack", stat="identity") +
+  theme_bw()
+  
 
-chrom_matrix <- as.data.frame(pivot_wider(chrom_matrix,names_from = 'Var2', values_from = 'Freq'))
-rownames(chrom_matrix) <- chrom_matrix$Var1
-chrom_matrix <- chrom_matrix[,-c(1)]
 
-one_sided_chrom_matrix <- chrom_matrix + t(chrom_matrix)
+#
 
-one_sided_chrom_matrix <- one_sided_chrom_matrix
-one_sided_chrom_matrix$chrom1 <- rownames(one_sided_chrom_matrix)
-one_sided_chrom_matrix <- pivot_longer(one_sided_chrom_matrix,names_to = 'chrom2',values_to = 'n',cols = c(1:5))
+chrom_matrix <- chrom_matrix %>%
+    pivot_wider(names_from = 'chrom',values_from = 'Freq') %>%
+    mutate(zero_count = rowSums(. == 0, na.rm = TRUE)) %>%
+    filter(zero_count < 5) %>%
+    mutate(same_chrom_fam = case_when(zero_count == 4 ~ 'same_chrom',
+                                      zero_count < 4 ~ 'diff_chrom(s)')) %>% 
+    pivot_longer(cols = c('2L','2R','3L','3R','X'), names_to = 'chrom') %>%
+    select(-zero_count)
 
-one_sided_chrom_matrix <- one_sided_chrom_matrix[!duplicated(one_sided_chrom_matrix$n),]
+# add same_chrom information to dups dataframe
+same_chrom <- unique(chrom_matrix[c('same_chrom_fam','dup_family_fly')])
+dups$dup_family_fly <- paste0(dups$dup_family, '_', dups$fly)
+dups <- merge(dups,same_chrom,by='dup_family_fly')
 
-gg <- ggplot(one_sided_chrom_matrix,aes(x=chrom1,y=chrom2,fill=n)) +
+# plot matrix 
+table(chrom_matrix$same_chrom_fam,chrom_matrix$chrom)
+
+
+t <- chrom_matrix[chrom_matrix$value > 0,]
+table(t$same_chrom_fam,t$chrom)
+
+t2 <- t %>%
+  group_by(chrom,same_chrom_fam) %>%
+  summarise(v = sum(value), .groups='keep')
+
+
+gg <- ggplot(t2,aes(x=same_chrom_fam,y=chrom,fill=v)) +
   geom_tile() +
   theme_bw() +
-  xlab('Chromosome of duplicate 2') +
-  ylab('Chromosome of duplicate 1') +
-  labs(fill = "Duplicates")
+  xlab('') +
+  ylab('') +
+  labs(fill='Copies')
 
 ggsave("./Plots/chrom_dup_heatmap.jpg", plot = gg, width = 7, height = 5)
 
 
 # frequency plot 
-dup1 <- dups[,c(3,2,21)]
-dup2 <- dups[,c(1,2,32)]
+freq_dist <- dups[c('dup','fly')]
 
-colnames(dup1) <- c('dup','fly','chrom')
-colnames(dup2) <- c('dup','fly','chrom')
-
-dup <- rbind(dup1,dup2)
-
-
-plot_freq_dist <- dup[c('dup','fly')]
-plot_freq_dist <- unique(plot_freq_dist)
-
-plot_freq_dist <- as.data.frame(table(plot_freq_dist$dup))
-plot_freq_dist <- as.data.frame(table(plot_freq_dist$Freq))
+freq_dist <- as.data.frame(table(freq_dist$dup))
+plot_freq_dist <- as.data.frame(table(freq_dist$Freq))
 
 gg <- ggplot(plot_freq_dist,aes(x=Var1,y=Freq)) +
   geom_bar(stat='identity') +
@@ -278,62 +287,53 @@ gg <- ggplot(plot_freq_dist,aes(x=Var1,y=Freq)) +
 ggsave("./Plots/freq_distribution_barplot.jpg", plot = gg, width = 10, height = 3)
 
 
+# frequency distribution with chromosomes 
+plot_freq_dist_chrom <- dups[c('dup','fly','dup_chrom')]
+
+colnames(freq_dist) <- c('dup','Freq')
+
+plot_freq_dist_chrom <- as.data.frame(table(plot_freq_dist_chrom$dup,plot_freq_dist_chrom$dup_chrom))
+
+plot_freq_dist_chrom <- as.data.frame(table(plot_freq_dist_chrom$Freq,plot_freq_dist_chrom$Var2))
+
+plot_freq_dist_chrom <- plot_freq_dist_chrom[!plot_freq_dist_chrom$Var1==0,]
+
+ggplot(plot_freq_dist_chrom, aes(fill=Var2, y=Freq, x=Var1)) + 
+  geom_bar(position="stack", stat="identity") +
+  theme_bw()
+
+
 # distance when on same chrom
 dups <- dups %>%
-  mutate(same_chrom = case_when(dup1_chrom == dup2_chrom ~ 'same_chrom',
-                                dup1_chrom != dup2_chrom ~ 'diff_chrom')) %>%
-  mutate(dist = case_when((same_chrom=='same_chrom') & (dup1_start_on_chrom > dup2_start_on_chrom) ~ (dup1_start_on_chrom - dup2_end_on_chrom),
-                          (same_chrom=='same_chrom') & (dup2_start_on_chrom > dup1_start_on_chrom) ~ (dup2_start_on_chrom - dup1_end_on_chrom)))
+  group_by(dup_family_fly) %>%
+  mutate(farthest_dist = case_when(same_chrom_fam == 'same_chrom' ~ abs(min(dup_end_on_chrom) - max(dup_start_on_chrom)),
+                          same_chrom_fam == 'diff_chrom(s)' ~ NA))
+
 write.table(dups,'Duplicate_Proteins_2.tsv')
 
 
-same_chrom <- dups[dups$same_chrom == 'same_chrom',]
+same_chrom <- dups[dups$same_chrom_fam == 'same_chrom',]
 
-gg <- ggplot(same_chrom,aes(y=dist,x=dup1_chrom,color=dup1_chrom)) +
+gg <- ggplot(same_chrom,aes(y=farthest_dist,x=dup_chrom,color=dup_chrom)) +
   geom_boxplot() +
   ylab('Distance between duplicates') +
   xlab('') +
   guides(color = guide_legend(title = "Chromosome")) +
   theme_bw() +
-  ggsignif::geom_signif(comparisons = list(c('X','2L'),c('X','2R'),c('X','3L'),c('X','3R')),
-                        map_signif_level = c('****'=0.0001,"***"=0.001, "**"=0.01, "*"=0.05),
-                        textsize = 6, 
-                        vjust = 0.5,
-                        y_position = c(3.5e+07,3.75e+07,4e+07,4.25e+07),
-                        test = 't.test') +
+  scale_y_log10() +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='2L',]$length), linewidth = 1.1, color = "#F8766D") +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='2R',]$length), linewidth = 1.1, color = "#A3A500") +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='3L',]$length), linewidth = 1.1, color = "#00BF7D") +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='3R',]$length), linewidth = 1.1, color = "#00B0F6") +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='X',]$length), linewidth = 1.1, color = "#E76BF3")
-
+  #ggsignif::geom_signif(comparisons = list(c('X','2L'),c('X','2R'),c('X','3L'),c('X','3R')),
+  #                      map_signif_level = c('****'=0.0001,"***"=0.001, "**"=0.01, "*"=0.05),
+  #                      textsize = 6, 
+  #                      vjust = 0.5,
+  #                      y_position = c(3.5e+07,3.75e+07,4e+07,4.25e+07),
+  #                      test = 't.test') 
+  
 ggsave("./Plots/chrom_dist_between_dups_boxplot.jpg", plot = gg, width = 7, height = 8)
-
-
-# number of duplicates per chromosome in each fly 
-n_dups <- as.data.frame(table(dup))
-
-n_dups <- n_dups %>%
-  group_by(fly,chrom) %>%
-  summarize(n = sum(Freq), .groups = "drop")
-
-add <- n_dups %>%
-  group_by(fly) %>%
-  summarize(n = sum(n))
-
-add$chrom <- 'Total'
-n_dups <- bind_rows(n_dups, add)
-
-gg <- ggplot(n_dups,aes(x=factor(chrom,levels=c('2L','2R','3L','3R','X','Total')),y=fly,fill=n,label=scales::comma(n))) +
-  geom_tile() +
-  geom_text(color = "white", size=2, hjust=1) +  
-  theme_bw() +
-  xlab('Chromosome') +
-  ylab('Fly') +
-  labs(fill = "Number of Duplicates") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-
-ggsave("./Plots/dup_chrom_fly_heatmap.jpg", plot = gg, width = 7, height = 6)
 
 
 

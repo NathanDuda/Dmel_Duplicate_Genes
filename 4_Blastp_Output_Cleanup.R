@@ -12,7 +12,8 @@ all_annotations <- read.csv("./Annotations.tsv", sep="")
 
 # keep only the full gene information 
 all_annotations <- all_annotations[all_annotations$type=='gene',]
-write.table(all_annotations,file='Annotations_Gene.tsv')
+write.table(all_annotations,file='./Annotations_Gene.tsv')
+#all_annotations <- read.csv("./Annotations_Gene.tsv", sep="")
 
 # make sure no genes overlap
 nonoverlapping_all_annotations <- all_annotations %>%
@@ -57,16 +58,22 @@ for (row in 1:nrow(fly_name_list)){
   
   # keep only the longest hit for same hits 
   blastp <- blastp %>% 
+    arrange(length) %>%
     group_by(qseqid, sseqid) %>%
     filter(length == max(length)) %>%
+    distinct(qseqid,sseqid, .keep_all = T) %>%
     ungroup() 
-  
-  # keep only one of the reciprocal hits 
+
+  # keep only reciprocal hits 
   blastp <- blastp %>% 
     mutate(q_s = paste0(qseqid,'_',sseqid)) %>%
     mutate(s_q = paste0(sseqid,'_',qseqid)) %>%
     arrange(desc(pident)) %>%
-    filter(!((s_q %in% q_s) & (q_s > s_q))) %>%
+    filter(s_q %in% q_s) 
+  
+  # keep only one of the reciprocal hits 
+  blastp <- blastp %>%
+    filter(!(q_s > s_q)) %>%
     select(-q_s,-s_q)
   
   # get annotations for given fly
@@ -154,8 +161,12 @@ dups <- rbind(dup1_info,dup2_info)
 
 # merge with duplicate families
 dups <- left_join(dups,dup_families,by=c('fly','dup'))
-dups <- dups[!duplicated(dups[c('fly','dup','dup_family')]),]
 
+
+
+table(dups$fly)
+t <- dups[!duplicated(dups[c('fly','dup','dup_family')]),]
+table(t$fly)
 
 # write to file 
 write.table(dups,'./Duplicate_Proteins.tsv')

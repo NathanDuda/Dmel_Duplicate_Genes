@@ -79,14 +79,15 @@ for (row in 1:nrow(fly_name_list)){
 # get FBgn for each pp
 my_FBgns <- merge(my_FBgns,fbgn_fbpp,by='FBpp')
 
-length(unique(my_FBgns$FBgn))
-length(unique(my_FBgns$gn))
+length(unique(t2$FBgn))
+length(unique(t2$gn))
 
 length(unique(fbgn_fbpp$FBgn))
 
 
 # write to table
 write.table(my_FBgns,'./gn_FBgn_FBpp.tsv')
+# my_FBgns <- read.csv("./gn_FBgn_FBpp.tsv", sep="")
 
 # extract the FBgns 
 FBgn <- my_FBgns[c('FBgn')]

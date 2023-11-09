@@ -78,44 +78,27 @@ all_dups <- all_dups_orig
 
 
 
-fly_name_list <- read.table("./Individuals_List.txt", quote="\"", comment.char="")
+edge_list <- data.frame(source = all_dups$dup1, target = all_dups$dup2)
+
+# Create a graph from the edge list
+graph <- graph.data.frame(edge_list, directed = FALSE)
+
+# Perform community detection using the Louvain algorithm
+community <- cluster_louvain(graph)
+
+# Add the community labels to the nodes
+V(graph)$community <- membership(community)
+
+# Get the community labels for each node
+node_communities <- data.frame(
+  node = community$names,
+  community = community$membership)
 
 
-dup_families <- as.data.frame(matrix(nrow=0,ncol=3))
+colnames(node_communities) <- c('dup','dup_family')
+node_communities$fly <- 'Dsim'
 
-# loop over all flies 
-for (row in 1:nrow(fly_name_list)){
-  
-  # get name of current fly
-  name <- fly_name_list[row,1]
-  
-  dup1_dup2 <- all_dups[all_dups$fly==name,c('dup1','dup2')]
-  
-  edge_list <- data.frame(source = dup1_dup2$dup1, target = dup1_dup2$dup2)
-  
-  # Create a graph from the edge list
-  graph <- graph.data.frame(edge_list, directed = FALSE)
-  
-  # Perform community detection using the Louvain algorithm
-  community <- cluster_louvain(graph)
-  
-  # Add the community labels to the nodes
-  V(graph)$community <- membership(community)
-  
-  # Get the community labels for each node
-  node_communities <- data.frame(
-    node = community$names,
-    community = community$membership
-  )
-  
-  colnames(node_communities) <- c('dup','dup_family')
-  node_communities$fly <- name
-  
-  dup_families <- rbind(dup_families,node_communities)
-  
-  print(row)
-  
-}
+dup_families <- node_communities
 
 
 
