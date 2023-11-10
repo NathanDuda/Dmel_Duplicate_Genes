@@ -54,7 +54,7 @@ for (row in 1:nrow(fly_name_list)){
   name <- fly_name_list[row,1]
   
   # import blast result
-  blastp_FBgn <- read.delim(paste0("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/FBgn_Blast_Output/",name,"_blastp.tsv"), header=FALSE)
+  blastp_FBgn <- read.delim(paste0("./FBgn_Blast_Output/",name,"_blastp.tsv"), header=FALSE)
   colnames(blastp_FBgn) <- c('qseqid', 'sseqid', 'length', 'bitscore', 'pident', 'evalue')
   
   # keep only the gene with its FBgn and the evalue
@@ -73,8 +73,8 @@ for (row in 1:nrow(fly_name_list)){
   my_FBgns <- rbind(my_FBgns,blastp_FBgn)
   
   print(row)
-  
 }
+
 
 # get FBgn for each pp
 my_FBgns <- merge(my_FBgns,fbgn_fbpp,by='FBpp')

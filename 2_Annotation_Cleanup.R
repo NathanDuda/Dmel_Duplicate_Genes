@@ -1,8 +1,7 @@
-# Title: 2_Annotation_Cleanup_and_Blast_Run.R
+# Title: 2_Annotation_Cleanup.R
 # Author: Nathan Duda
 # Date: 10/28/2023
-# Purpose: Format the annotations into fasta files for each fly.
-#          Format all annotations into a table with gene id, prot sequence, chromosome, location, and other information.
+# Purpose: Format all annotations into a table with gene id, prot sequence, chromosome, location, and other information.
 
 
 source("startup.R")
@@ -20,7 +19,7 @@ for (row in 1:nrow(fly_name_list)){
   name <- fly_name_list[row,1]
   
   # import the dataframe 
-  aa <- read.csv(paste0("./Augustus_Output/aa_fastas/",name,"_aa.fasta"), sep="", header = F)
+  aa <- read.csv(paste0("./Prot_Fastas/",name,"_annotations.fasta"), sep="", header = F)
   
   # format the fasta into a dataframe 
   colnames(aa)[1] <- 'aa'
@@ -30,14 +29,11 @@ for (row in 1:nrow(fly_name_list)){
     mutate(prot = paste(aa, collapse = "")) %>%
     ungroup() %>%
     select(-Group)
-  aa[1,1] <- '>'
   aa <- aa[grepl(">", aa$aa), ]
-  aa$aa <- '>'
-  aa$prot <- gsub('>','',aa$prot)
+  aa$prot <- sub(".*\\.t1", "", aa$prot)
   
   # get protein length
   aa$nchar <- nchar(aa$prot)
-  
   
   # import the number of genes on each chromosome to get the chromosomes of each gene (since theyre in order)
   aa_per_chrom <- read.table(paste0("./Augustus_Output/aa_per_chrom/",name,"_aa_per_chrom.txt"), quote="\"", comment.char="")
@@ -50,7 +46,6 @@ for (row in 1:nrow(fly_name_list)){
   aa_per_chrom$V1 <- cumsum(aa_per_chrom$V1)
   
   aa_per_chrom$gene_group <- paste0('g',aa_per_chrom$V1)
-  
   
   # import annotation output from augustus
   annotations <- read.delim(paste0("./Augustus_Output/",name,"_annotations.gff"), header=FALSE, comment.char="#")
@@ -78,41 +73,36 @@ for (row in 1:nrow(fly_name_list)){
     mutate(approx_expected_prot_len = sum(approx_expected_prot_len) / 3) %>%
     ungroup()
   
-  
   # get the chromosomes for each gene
   annotations <- left_join(annotations,aa_per_chrom,by='gene_group')
   annotations <- annotations %>% fill(chrom, .direction = "up") %>% select(-V1)
-  
   
   # get the proteins for each gene 
   aa$gene_group <- paste0('g',1:nrow(aa))
   annotations <- merge(annotations,aa,by='gene_group')
   annotations <- annotations %>% select(-aa)
   
-  ####################################
-  # write proteins into fasta file 
-  
-  # Convert the dataframe to FASTA-like format
-  annotations_subset <- annotations[c('gene_group','prot')]
-  annotations_subset <- annotations_subset[!duplicated(annotations_subset),]
-  
-  prot_fasta <- character(nrow(annotations_subset) * 2)
-  prot_fasta[c(TRUE, FALSE)] <- paste0(">", annotations_subset$gene_group)
-  prot_fasta[c(FALSE, TRUE)] <- annotations_subset$prot
-  
-  # write into fasta file 
-  writeLines(prot_fasta,paste0('./Prot_Fastas/',name,'_prot.fasta'))
-  
-  ####################################
-  
   # add fly name to the annotation dataframe
   annotations$fly <- name 
   
   # add annotation to dataframe with all annotations
   all_annotations <- rbind(all_annotations,annotations)
-
+  
   print(row)
 }
 
+# remove the gene name from the protein sequence column 
+all_annotations$prot <- sub(">g\\d+", "", all_annotations$prot)
+
+# remove the proteins that dont start with M
+all_annotations <- all_annotations[grepl("^M", all_annotations$prot), ]
+
+# get adjusted protein length
+all_annotations$nchar <- nchar(all_annotations$prot)
+
 # write to table
 write.table(all_annotations,'Annotations.tsv')
+
+
+
+

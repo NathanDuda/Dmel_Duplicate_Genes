@@ -1,20 +1,30 @@
+# Title: 10_Dsim_Annotation_Cleanup.R
+# Author: Nathan Duda
+# Date: 11/10/2023
+# Purpose: Format all annotations into a table with gene id, prot sequence, chromosome, location, and other information
+#          for the Drosophila simulans dataset. 
 
 
 source("startup.R")
 
-
-# create empty dataframe for output
-dsim_annotations <- as.data.frame(matrix(ncol=13,nrow=0))
-
-# get name of current fly 
-name <- fly_name_list[row,1]
-
 # import the dataframe 
-aa <- read.csv("./Dsim/Output_Annotations/Dsim_aa.fasta", sep="", header = F)
+aa <- read.csv("./Dsim/Prot_Fastas/Dsim_annotations.fasta", sep="", header = F)
 
 # format the fasta into a dataframe 
-aa <- data.frame(aa[seq(2, nrow(aa), by = 2), ])
-colnames(aa)[1] <- 'prot'
+colnames(aa)[1] <- 'aa'
+aa <- aa %>%
+  mutate(Group = cumsum(grepl("^>", aa))) %>%
+  group_by(Group) %>%
+  mutate(prot = paste(aa, collapse = "")) %>%
+  ungroup() %>%
+  select(-Group)
+aa <- aa[grepl(">", aa$aa), ]
+
+# remove the gene name from the protein sequence column 
+aa$prot <- sub(">g\\d+", "", aa$prot)
+
+# remove the proteins that dont start with M
+aa <- aa[grepl("^M", aa$prot), ]
 
 # get protein length
 aa$nchar <- nchar(aa$prot)
@@ -33,7 +43,6 @@ aa_per_chrom$chrom <- chrom
 aa_per_chrom$V1 <- cumsum(aa_per_chrom$V1)
 
 aa_per_chrom$gene_group <- paste0('g',aa_per_chrom$V1)
-
 
 # import annotation output from augustus
 annotations <- read.delim("./Dsim/Output_Annotations/Dsim_annotations.gff", header=FALSE, comment.char="#")
@@ -61,36 +70,17 @@ annotations <- annotations %>%
   mutate(approx_expected_prot_len = sum(approx_expected_prot_len) / 3) %>%
   ungroup()
 
-
 # get the chromosomes for each gene
 annotations <- left_join(annotations,aa_per_chrom,by='gene_group')
 annotations <- annotations %>% fill(chrom, .direction = "up") %>% select(-V1)
-
 
 # get the proteins for each gene 
 aa$gene_group <- paste0('g',1:nrow(aa))
 annotations <- merge(annotations,aa,by='gene_group')
 annotations <- annotations 
 
-####################################
-# write proteins into fasta file 
-
-# Convert the dataframe to FASTA-like format
-annotations_subset <- annotations[c('gene_group','prot')]
-annotations_subset <- annotations_subset[!duplicated(annotations_subset),]
-
-prot_fasta <- character(nrow(annotations_subset) * 2)
-prot_fasta[c(TRUE, FALSE)] <- paste0(">", annotations_subset$gene_group)
-prot_fasta[c(FALSE, TRUE)] <- annotations_subset$prot
-
-# write into fasta file 
-writeLines(prot_fasta,'./Dsim/Prot_Fastas/Dsim_prot.fasta')
-
-####################################
-
 # add fly name to the annotation dataframe
 annotations$fly <- 'Dsim' 
-
 
 # write to table
 write.table(annotations,'./Dsim/Dsim_Annotations.tsv')

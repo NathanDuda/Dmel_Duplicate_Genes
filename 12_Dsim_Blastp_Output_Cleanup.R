@@ -116,7 +116,7 @@ dups <- left_join(dups,dup_families,by=c('fly','dup'))
 
 
 # write to file 
-write.table(dups,'./Duplicate_Proteins.tsv')
+write.table(dups,'./Dsim/Duplicate_Proteins.tsv')
 
 
 

@@ -165,8 +165,12 @@ dups <- left_join(dups,dup_families,by=c('fly','dup'))
 
 
 table(dups$fly)
-t <- dups[!duplicated(dups[c('fly','dup','dup_family')]),]
-table(t$fly)
+dups <- dups[!duplicated(dups[c('fly','dup','dup_family')]),]
+table(dups$fly)
+
+
+# remove the crappy assemblies
+dups <- dups[!dups$fly %in% c('I23','ZH26','N25','T29A','B59'),]
 
 # write to file 
 write.table(dups,'./Duplicate_Proteins.tsv')
