@@ -57,6 +57,7 @@ blastp <- blastp %>%
 
 # merge blast hits with gene annotations for dup1
 colnames(blastp) <- c('dup1','dup2','match_length','match_dup1_start','match_dup1_end','match_dup1_length','match_dup2_start','match_dup2_end','match_dup2_length','match_pident','match_evalue')
+all_annotations <- all_annotations[,-c(11)] # remove extra gene id. column name "aa"
 colnames(all_annotations) <- c('dup1','dup1_type','dup1_start_on_chrom','dup1_end_on_chrom','dup1_n','dup1_strand','dup1_s','dup1_length','dup1_approx_expected_prot_len','dup1_chrom','dup1_prot','dup1_nchar','fly')
 blastp <- merge(blastp,all_annotations,by='dup1')
 
@@ -72,7 +73,7 @@ write.table(blastp,'./Dsim/Duplicate_Hits.tsv')
 
 # get duplicate families 
 
-#all_dups_orig <- blastp
+all_dups_orig <- blastp
 all_dups <- all_dups_orig
 
 

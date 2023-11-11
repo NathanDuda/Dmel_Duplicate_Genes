@@ -34,9 +34,14 @@ aa_per_chrom <- read.table("./Dsim/Output_Annotations/Dsim_aa_per_chrom.txt", qu
 aa_per_chrom[aa_per_chrom$V1 == 0,] <- NA
 aa_per_chrom <- na.omit(aa_per_chrom)
 
-chrom <- c('2L','2R','3L','3R','4','X')
+chrom <- c('2L','2R','3L','3R','4','X','unk')
 
-aa_per_chrom <- as.data.frame(aa_per_chrom[c(1:6),])
+# sum up rest of rows to be unplaced genes 
+row_7 <- aa_per_chrom %>% dplyr::slice(7:155) %>% summarise(across(everything(), sum))
+aa_per_chrom$V1[7] <- row_7
+
+aa_per_chrom <- as.data.frame(aa_per_chrom[c(1:7),])
+aa_per_chrom <- as.data.frame(t(aa_per_chrom))
 colnames(aa_per_chrom) <- 'V1'
 
 aa_per_chrom$chrom <- chrom
