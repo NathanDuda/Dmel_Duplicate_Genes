@@ -95,7 +95,6 @@ for (row in 1:nrow(fly_name_list)){
 }
 
 
-
 # write to file 
 write.table(all_dups,'./Duplicate_Hits.tsv')
 
