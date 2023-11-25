@@ -7,7 +7,7 @@
 
 source("startup.R")
 
-# import the dataframe 
+# import the annotations dataframe 
 aa <- read.csv("./Dsim/Prot_Fastas/Dsim_annotations.fasta", sep="", header = F)
 
 # format the fasta into a dataframe 

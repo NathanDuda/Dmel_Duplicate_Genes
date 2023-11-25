@@ -11,7 +11,7 @@ source("startup.R")
 dsim_dups <- read.csv("./Dsim/Duplicate_Proteins.tsv", sep="")
 
 # import duplicates for dmel 
-dmel_dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
+dmel_dups <- read.csv("./Duplicate_Proteins_3.tsv", sep="")
 dmel_dups_orig <- dmel_dups
 
 # compare number of duplicate families between dmel flies and dsim 
@@ -28,6 +28,7 @@ fly_name_list <- read.table("./Individuals_List_47.txt", quote="\"", comment.cha
 any_ortholog <- as.data.frame(matrix(ncol=13,nrow=0))
 all_ortholog <- as.data.frame(matrix(ncol=13,nrow=0))
 dups_orthos <- as.data.frame(matrix(ncol=16,nrow=0))
+all_orthologs <- as.data.frame(matrix(ncol=4,nrow=0)) 
 
 # loop over all flies 
 for (row in 1:nrow(fly_name_list)){
@@ -72,11 +73,25 @@ for (row in 1:nrow(fly_name_list)){
   all_ortholog <- rbind(all_ortholog,all_ortholog_subset)
   dups_orthos <- rbind(dups_orthos,dmel_dups)
   
+  orthologs$fly <- name
+  all_orthologs <- rbind(all_orthologs,orthologs)
+  
   print(row)
 
 }
 
 ###########
+
+# write to table
+write.table(dups_orthos,file='./Dmel_Dsim_Ortho_Duplicates.tsv')
+
+
+# number of orthologs 
+t <- all_orthologs %>%
+  group_by(fly) %>%
+  summarise(n_orthologs = length(unique(dsim_ortholog)))
+
+
 
 dups_orthos <- dups_orthos[!duplicated(dups_orthos[c('fly','dup')]),]
 
@@ -170,8 +185,6 @@ gg <- ggarrange(freq_dist,perc,nrow = 2, ncol = 1,
           labels = c('A','B'),
           align = 'v')
 
-gg
-
 ggsave("./Plots/dsim_freq_dist_barplot.jpg", plot = gg, width = 12, height = 6)
 
 
@@ -179,15 +192,33 @@ ggsave("./Plots/dsim_freq_dist_barplot.jpg", plot = gg, width = 12, height = 6)
 
 
 
+
 plot_freq_dist_colored <- dups_orthos[c('dup','fly','dsim_dup','dup_chrom')]
 
 
-
 all_chrom <- plot_freq_dist_colored %>%
+  select(-dsim_dup) %>%
+  group_by(dup,fly) %>%
+  mutate(x_axis = n())
+  
+  
+
+
+
+
+
+
+
+table(plot_freq_dist_colored$fly,plot_freq_dist_colored$dup_chrom)
+
+
+
+all_chrom <- 
+  plot_freq_dist_colored %>%
   group_by(dup) %>%
   mutate(x_axis = n_distinct(fly)) %>%
   ungroup() %>%
-  distinct(dup,dsim_dup,dup_chrom, .keep_all = T) %>%
+  #distinct(dup,fly,dsim_dup,dup_chrom, .keep_all = T) %>%
   group_by(x_axis,dsim_dup,dup_chrom) %>%
   mutate(y_axis = n()) %>%
   ungroup() %>%
@@ -198,6 +229,7 @@ all_chrom <- plot_freq_dist_colored %>%
   select(-dsim_dup) %>%
   distinct() 
   
+
 
 
 plot_all_chrom <- 
@@ -269,6 +301,9 @@ gg <- ggarrange(freq_dist,perc,plot_dup_w_ortho_chrom,plot_dup_NO_ortho_chrom,
 ggsave("./Plots/dsim_freq_dist_barplots.jpg", plot = gg, width = 13, height = 12)
 
 
+gg <- ggarrange(freq_dist,perc + xlab('Number of Flies'),nrow=2,ncol=1,align='v',labels = c('A','B'))
+ggsave("./Plots/dsim_freq_perc_barplots.jpg", plot = gg, width = 13, height = 6)
+
 
 ##################################################
 
@@ -291,7 +326,6 @@ gg <- ggarrange(freq,plot_all_chrom,nrow=2,ncol=1,align='v',labels=c('A','B'),
           common.legend = T, legend = "right")
 
 ggsave("./Plots/freq_dist_chrom_barplots.jpg", plot = gg, width = 13, height = 6)
-
 
 
 

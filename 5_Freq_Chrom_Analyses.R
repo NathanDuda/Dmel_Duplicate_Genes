@@ -10,11 +10,6 @@ source("startup.R")
 # import my duplicate genes 
 dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
 
-# remove the crappy assemblies
-dups <- dups[!dups$fly %in% c('I23','ZH26','N25','T29A','B59'),]
-
-dups <- dups[nrow(dups):1,]
-
 # import chromosomes for every fly
 genomes <- readDNAStringSet("./Genome_Assemblies/All_Genome_Assemblies.fasta")
 
@@ -43,6 +38,34 @@ chrom_info <- merge(chrom_lengths,chrom_gene_counts,by=c('chrom','fly'))
 # plot the number of genes on a chromosome versus the chromosomes length
 
 chrom_info <- chrom_info[!chrom_info$fly %in% c('I23','ZH26','N25','T29A','B59'),]
+
+######################################
+# get chromosome statistics 
+sd <- chrom_info %>%
+  group_by(chrom) %>%
+  summarize(sd_length = sd(length), mean_length = mean(length),
+            sd_n_genes = sd(n_genes), mean_n_genes = mean(n_genes))
+
+# calculate gc content
+gc_content <- data.frame(
+  Name = names(genomes),
+  GC_Content = sapply(genomes, function(seq) {
+    gc_count <- sum(strsplit(as.character(seq), "")[[1]] %in% c("G", "C"))
+    gc_content <- gc_count / length(seq)
+    return(gc_content)
+  }), stringsAsFactors = FALSE)
+
+
+gc_content <- gc_content %>% separate(Name,into = c('fly','chrom'),sep='.fasta_')
+gc_content <- gc_content[!gc_content$fly %in% c('I23','ZH26','N25','T29A','B59'),]
+gc_content <- gc_content %>%
+  group_by(chrom) %>%
+  summarize(sd_gc_content = sd(GC_Content), mean_gc_content = mean(GC_Content))
+
+sd <- merge(sd,gc_content,by='chrom')
+
+######################################
+
 
 gg <- ggplot(chrom_info,aes(x=length,y=n_genes,color=chrom)) +
   geom_point() +
@@ -117,19 +140,43 @@ dup_fams <- chrom_matrix %>%
   na.omit() %>%
   group_by(chrom,fly) %>%
   summarize(Freq=length(unique(dup_family)), .groups = 'keep') %>%
-  ungroup() %>%
-  group_by(fly) %>%
-  summarize(Freq=sum(Freq))
+  ungroup()
+
+  #group_by(fly) %>%
+  #summarize(Freq=sum(Freq))
 
 
 # total number of copies 
 copies <- chrom_matrix %>%
   group_by(chrom,fly) %>%
-  summarize(Freq=sum(Freq), .groups = 'keep')
+  summarize(Freq=sum(Freq), .groups = 'keep') %>%
+  ungroup()
+
+total <- copies %>%
+  group_by(fly) %>%
+  summarise(Freq = sum(Freq)) %>%
+  mutate(chrom='total')
+
+copies <- rbind(total,copies)
+
+gg <- ggplot(copies,aes(y=fly,x=factor(chrom,levels=c('2L','2R','3L','3R','X','total')),fill=Freq)) +
+  geom_tile() +
+  theme_bw() + 
+  xlab('') +
+  ylab('') +
+  geom_text(aes(label = scales::comma(Freq)), color = "white",size=1.9) +
+  labs(fill = "Duplicate Copies") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ggsave("./Plots/copies_per_fly_chrom_heatmap.jpg", plot = gg, width = 5, height = 6)
 
 # average copies per family 
 copies_per_fam <- copies
-copies_per_fam$Freq <- copies_per_fam$Freq / dup_fams_chrom$Freq
+
+colnames(copies_per_fam) <- c('fly','copies_per_fam','chrom')
+colnames(dup_fams_chrom) <- c('chrom','fly','dup_fams_chrom')
+copies_per_fam <- merge(copies_per_fam,dup_fams_chrom,by=c('fly','chrom'))
+copies_per_fam$Freq <- copies_per_fam$copies_per_fam / copies_per_fam$dup_fams_chrom
 
 gg <- ggplot(copies_per_fam,aes(x=fly,y=chrom,fill=Freq)) +
   geom_tile() +
@@ -151,8 +198,8 @@ chrom_matrix$dup_family_fly <- paste0(chrom_matrix$dup_family, '_', chrom_matrix
 chrom_matrix <- chrom_matrix %>% arrange(Freq)
 
 
-ggplot(chrom_matrix, aes(fill=chrom, y=Freq, x=fly)) + 
-  geom_bar(position="dodge", stat="identity") 
+#ggplot(chrom_matrix, aes(fill=chrom, y=Freq, x=fly)) + 
+#  geom_bar(position="dodge", stat="identity") 
 
 
 ggplot(chrom_matrix, aes(fill=chrom, y=Freq, x=fly)) + 
@@ -242,12 +289,19 @@ write.table(dups,'Duplicate_Proteins_2.tsv')
 
 same_chrom <- dups[dups$same_chrom_fam == 'same_chrom',]
 
-gg <- ggplot(same_chrom,aes(y=farthest_dist,x=dup_chrom,color=dup_chrom)) +
+#gg <- 
+  ggplot(same_chrom,aes(y=farthest_dist,x=dup_chrom,color=dup_chrom)) +
   geom_boxplot() +
   ylab('Distance between duplicates') +
   xlab('') +
   guides(color = guide_legend(title = "Chromosome")) +
   theme_bw() +
+  ylim(0,50000)
+
+
+
+
+
   scale_y_log10() +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='2L',]$length), linewidth = 1.1, color = "#F8766D") +
   geom_hline(yintercept = mean(chrom_lengths[chrom_lengths$chrom=='2R',]$length), linewidth = 1.1, color = "#A3A500") +

@@ -101,3 +101,52 @@ ggplot(t, aes(x=n_dups_in_fam,y=number_of_families_with)) +
 
 
 
+# mech per chrom 
+mech_chrom <- dups[c('mech','fly','dup_chrom','dup_intron')]
+mech_chrom <- as.data.frame(table(mech_chrom$mech,mech_chrom$dup_chrom,mech_chrom$dup_intron))
+
+
+
+mech_chrom <- mech_chrom %>%
+  mutate(mech = case_when(Var1=='dna'~'DNA',
+                          Var1=='rna'&Var3=='intron'~'RNA_intron',
+                          Var1=='rna'&Var3=='no_intron'~'RNA_no_intron')) %>%
+  filter(!mech=='unknown') %>%
+  filter(!Freq==0) %>%
+  na.omit()
+
+
+ggplot(mech_chrom, aes(x="", y=Freq, group=mech, fill=mech)) +
+  geom_bar(width = 1, stat = "identity", position = position_fill()) +
+  geom_text(aes(label = Freq), position = position_fill(vjust = 0.5), colour = 'black', size = 3) +
+  facet_grid(.~factor(Var2)) + 
+  theme_void() +
+  theme(legend.title = element_blank()) +
+  coord_polar("y") +
+  scale_fill_manual(values=c("#F67280", "#E9AB17", "#1E90FF"))
+
+
+table(dups$dup_chrom)
+
+
+
+
+
+
+dups <- dups %>%
+  mutate(mech = case_when(mech=='dna'~'DNA',
+                          mech=='rna'&dup_intron=='intron'~'RNA_intron',
+                          mech=='rna'&dup_intron=='no_intron'~'RNA_no_intron'))
+
+write.table(dups,file='./Duplicate_Proteins_3.tsv')
+
+
+
+
+
+
+
+
+
+
+

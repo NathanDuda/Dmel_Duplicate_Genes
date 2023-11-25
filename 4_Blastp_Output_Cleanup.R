@@ -81,11 +81,13 @@ for (row in 1:nrow(fly_name_list)){
   
   # merge blast hits with gene annotations for dup1
   colnames(blastp) <- c('dup1','dup2','match_length','match_dup1_start','match_dup1_end','match_dup1_length','match_dup2_start','match_dup2_end','match_dup2_length','match_pident','match_evalue')
+  blastp$dup1 <- paste0(name, '_', blastp$dup1)
   colnames(annotations) <- c('dup1','dup1_type','dup1_start_on_chrom','dup1_end_on_chrom','dup1_n','dup1_strand','dup1_s','dup1_length','dup1_approx_expected_prot_len','dup1_chrom','dup1_prot','dup1_nchar','fly')
   blastp <- merge(blastp,annotations,by='dup1')
   
   # merge blast hits with gene annotations for dup2
   colnames(annotations) <- c('dup2','dup2_type','dup2_start_on_chrom','dup2_end_on_chrom','dup2_n','dup2_strand','dup2_s','dup2_length','dup2_approx_expected_prot_len','dup2_chrom','dup2_prot','dup2_nchar','fly')
+  blastp$dup2 <- paste0(name, '_', blastp$dup2)
   blastp <- merge(blastp,annotations,by=c('dup2','fly'))
   
   # combine with all duplicates 
@@ -162,14 +164,17 @@ dups <- rbind(dup1_info,dup2_info)
 dups <- left_join(dups,dup_families,by=c('fly','dup'))
 
 
-
-table(dups$fly)
-dups <- dups[!duplicated(dups[c('fly','dup','dup_family')]),]
+dups <- dups[!duplicated(dups),]
 table(dups$fly)
 
 
 # remove the crappy assemblies
 dups <- dups[!dups$fly %in% c('I23','ZH26','N25','T29A','B59'),]
+
+
+#
+dups$dup_family <- paste0(dups$fly,'_',dups$dup_family)
+
 
 # write to file 
 write.table(dups,'./Duplicate_Proteins.tsv')

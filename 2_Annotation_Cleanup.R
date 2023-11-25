@@ -100,6 +100,9 @@ all_annotations <- all_annotations[grepl("^M", all_annotations$prot), ]
 # get adjusted protein length
 all_annotations$nchar <- nchar(all_annotations$prot)
 
+# make gn id contain fly name since same id is likely different gene in different fly
+all_annotations$gene_group <- paste0(all_annotations$fly,'_',all_annotations$gene_group)
+
 # write to table
 write.table(all_annotations,'Annotations.tsv')
 

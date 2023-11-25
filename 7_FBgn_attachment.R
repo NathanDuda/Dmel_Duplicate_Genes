@@ -79,15 +79,31 @@ for (row in 1:nrow(fly_name_list)){
 # get FBgn for each pp
 my_FBgns <- merge(my_FBgns,fbgn_fbpp,by='FBpp')
 
-length(unique(t2$FBgn))
-length(unique(t2$gn))
-
-length(unique(fbgn_fbpp$FBgn))
-
-
 # write to table
 write.table(my_FBgns,'./gn_FBgn_FBpp.tsv')
 # my_FBgns <- read.csv("./gn_FBgn_FBpp.tsv", sep="")
+
+
+my_FBgns <- my_FBgns[!my_FBgns$fly %in% c('I23','ZH26','N25','T29A','B59'),]
+
+
+t <- my_FBgns %>%
+  group_by(fly) %>%
+  summarise(gns_hit = length(unique()))
+
+# number of FBgns shared among all 47 flies 
+t2 <- table(my_FBgns)
+
+
+#
+length(unique(my_FBgns$FBgn))
+length(unique(my_FBgns$gn))
+
+length(unique(fbgn_fbpp$FBgn)) # total number of protein coding FBgns 
+
+
+
+
 
 # extract the FBgns 
 FBgn <- my_FBgns[c('FBgn')]

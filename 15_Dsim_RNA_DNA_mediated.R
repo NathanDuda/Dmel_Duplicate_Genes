@@ -4,6 +4,7 @@
 
 source("startup.R")
 
+dup_orthos <- read.csv("./Dmel_Dsim_Ortho_Duplicates.tsv", sep="")
 
 # import annotations to get intron information 
 genes_w_introns <- read.csv("./Dsim/Dsim_Annotations.tsv", sep="")
@@ -126,6 +127,50 @@ ggplot(t, aes(x=n_dups_in_fam,y=number_of_families_with)) +
   geom_bar(stat='identity') +
   scale_x_discrete(limits=factor(2:40)) +
   theme_bw()
+
+
+
+# merge
+
+dups <- dups %>%
+  mutate(mech = case_when(mech=='dna'~'DNA',
+                          mech=='rna'&dup_intron=='intron'~'RNA_intron',
+                          mech=='rna'&dup_intron=='no_intron'~'RNA_no_intron'))
+
+
+
+dsim_dups_mech_chrom <- dups[c('dup_family','dup','mech','dup_chrom')]
+
+colnames(dsim_dups_mech_chrom) <- c('dsim_dup_family','dsim_ortholog','dsim_mech','dsim_dup_chrom')
+dsim_dups_mech_chrom <- left_join(dup_orthos,dsim_dups_mech_chrom,by='dsim_ortholog')
+
+
+############################
+# percentage of duplicates with orthologs with the same mechanism
+
+dsim_dmel_mech <- dsim_dups_mech_chrom[c('fly','dup','mech','dsim_mech')]
+dsim_dmel_mech <- dsim_dmel_mech[!duplicated(dsim_dmel_mech),]
+dsim_dmel_mech <- dsim_dmel_mech[!is.na(dsim_dmel_mech$dsim_mech),]
+dsim_dmel_mech <- dsim_dmel_mech[!duplicated(dsim_dmel_mech[c('fly','dup','mech')]),]
+
+table(dsim_dmel_mech$mech,dsim_dmel_mech$dsim_mech)
+
+
+
+
+# percentage of duplicates with orthologs on the same chromosome 
+
+dsim_dmel_chrom <- dsim_dups_mech_chrom[c('fly','dup','dup_chrom','dsim_dup_chrom')]
+dsim_dmel_chrom <- dsim_dmel_chrom[!duplicated(dsim_dmel_chrom),]
+dsim_dmel_chrom <- dsim_dmel_chrom[!is.na(dsim_dmel_chrom$dsim_dup_chrom),]
+dsim_dmel_chrom <- dsim_dmel_chrom[!duplicated(dsim_dmel_chrom[c('fly','dup','dup_chrom')]),]
+
+table(dsim_dmel_chrom$dup_chrom,dsim_dmel_chrom$dsim_dup_chrom)
+
+
+
+
+
 
 
 
