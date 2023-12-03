@@ -15,15 +15,17 @@ genes_w_introns <- genes_w_introns %>%
           (strand == '-' & (lag(type == "stop_codon") | lead(type == "start_codon"))))))
 
 # get a list of genes with introns 
-genes_w_introns <- genes_w_introns[c('gene_group','fly','type','chrom')]
+genes_w_introns <- genes_w_introns[c('gene_group','type')]
 genes_w_introns <- genes_w_introns[!duplicated(genes_w_introns),]
 
 # import my duplicate genes 
 dups <- read.csv("./Duplicate_Proteins_2.tsv", sep="")
+dups$gene_group <- paste0(dups$fly,'_',dups$dup)
+
 
 # get intron presence information for my duplicates 
-colnames(genes_w_introns) <- c('dup','fly','dup_intron','dup_chrom')
-dups <- left_join(dups,genes_w_introns,by=c('fly','dup','dup_chrom'))
+colnames(genes_w_introns) <- c('gene_group','dup_intron')
+dups <- left_join(dups,genes_w_introns,by=c('gene_group'))
 dups$dup_intron[is.na(dups$dup_intron)] <- 'no_intron'
 
 # classify the duplicates into a mechanism using the introns
@@ -53,8 +55,8 @@ ggplot(mech, aes(x="", y=Freq, group=Var1, fill=Var1)) +
 
 
 # compare the duplication mechanisms between flies 
-mech_per_fly <- dups[c('mech','fly','dup_family')]
-mech_per_fly <- mech_per_fly[!duplicated(mech_per_fly[c('mech','dup_family','fly')]),]
+mech_per_fly <- dups[c('mech','fly','dup_family_fly')]
+mech_per_fly <- mech_per_fly[!duplicated(mech_per_fly[c('mech','dup_family_fly','fly')]),]
 mech_per_fly <- as.data.frame(table(mech_per_fly$mech,mech_per_fly$fly))
 colnames(mech_per_fly) <- c('mech','fly','n')
 
@@ -95,17 +97,32 @@ colnames(t) <- c('n_dups_in_fam','number_of_families_with')
 
 ggplot(t, aes(x=n_dups_in_fam,y=number_of_families_with)) +
   geom_bar(stat='identity') +
-  scale_x_discrete(limits=factor(2:40)) +
+  #scale_x_discrete(limits=factor(2:40)) +
   theme_bw()
 
 
 
 
 # mech per chrom 
-mech_chrom <- dups[c('mech','fly','dup_chrom','dup_intron')]
-mech_chrom <- as.data.frame(table(mech_chrom$mech,mech_chrom$dup_chrom,mech_chrom$dup_intron))
+mech_chrom <- dups[c('mech','dup_family_fly','dup_chrom')]
+mech_chrom <- mech_chrom[!duplicated(mech_chrom),]
+mech_chrom <- as.data.frame(table(mech_chrom$mech,mech_chrom$dup_chrom))
 
 
+gg <- ggplot(mech_chrom, aes(x="", y=Freq, group=Var1, fill=Var1)) +
+  geom_bar(width = 1, stat = "identity", position = position_fill()) +
+  geom_text(aes(label = Freq), position = position_fill(vjust = 0.5), colour = 'black', size = 3) +
+  facet_grid(.~factor(Var2)) + 
+  theme_void() +
+  theme(legend.title = element_blank()) +
+  coord_polar("y") +
+  scale_fill_manual(values=c("#F67280", "#E9AB17", "#1E90FF"))
+
+ggsave("./Plots/Mech_Per_Chrom_Pie.jpg", plot = gg, width = 7, height = 3)
+
+
+
+#
 
 mech_chrom <- mech_chrom %>%
   mutate(mech = case_when(Var1=='dna'~'DNA',

@@ -105,7 +105,7 @@ write.table(all_dups,'./Duplicate_Hits.tsv')
 
 #all_dups <- read.csv("./Duplicate_Hits.tsv", sep="")
 #all_dups_orig <- all_dups
-all_dups <- all_dups_orig
+#all_dups <- all_dups_orig
 
 
 

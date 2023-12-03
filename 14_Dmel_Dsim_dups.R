@@ -84,7 +84,7 @@ for (row in 1:nrow(fly_name_list)){
 
 # write to table
 write.table(dups_orthos,file='./Dmel_Dsim_Ortho_Duplicates.tsv')
-
+dups_orthos <- read.csv("./Dmel_Dsim_Ortho_Duplicates.tsv", sep="")
 
 # number of orthologs 
 t <- all_orthologs %>%
