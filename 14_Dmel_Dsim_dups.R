@@ -93,16 +93,39 @@ t <- all_orthologs %>%
 
 
 
-dups_orthos <- dups_orthos[!duplicated(dups_orthos[c('fly','dup')]),]
+##################
 
+equiv_genes <- read.csv("./Equivalent_Genes.tsv", sep="")
+
+t <- equiv_genes %>% sample_n(100000, replace = FALSE)
+t <- t %>%
+  mutate(rowname=rownames(.)) %>%
+  mutate(row_group = paste0('group_',rowname)) %>%
+  select(-rowname) %>%
+  pivot_longer(cols=c(A1:TOM.008)) %>%
+  separate_rows(value, sep = ",\\s*") %>%
+  na.omit()
+
+#all_annotations <- read.csv("./Annotations_Gene.tsv", sep="")
+#all_annotations <- all_annotations[!all_annotations$fly %in% c('I23','ZH26','N25','T29A','B59'),]
+#all_annotations$loc <- (all_annotations$len / 2) + all_annotations$start
+
+#gn_chroms <- all_annotations[c('gene_group','loc','chrom')]
+#p <- merge(t,gn_chroms,by='gene_group')
 
 
 
 # frequency plot using any_orthologs 
-freq_dist <- any_ortholog[c('dup','fly')]
+any_ortholog$gene_group <- paste0(any_ortholog$fly,'_',any_ortholog$dup)
 
-freq_dist <- as.data.frame(table(freq_dist$dup))
-plot_freq_dist <- as.data.frame(table(freq_dist$Freq))
+trash <- merge(t,any_ortholog,by='gene_group')
+trash <- trash[c('fly','row_group','dup_chrom')]
+
+freq_dist <- trash[c('row_group','fly')]
+
+freq_dist <- as.data.frame(table(freq_dist$row_group,freq_dist$fly))
+plot_freq_dist <- as.data.frame(table(freq_dist$Freq,freq_dist$Var2))
+plot_freq_dist <- as.data.frame(table(plot_freq_dist$Freq))
 
 ggplot(plot_freq_dist,aes(x=Var1,y=Freq)) +
   geom_bar(stat='identity') +
@@ -131,7 +154,7 @@ ggplot(plot_freq_dist,aes(x=Var1,y=Freq)) +
 
 # classify dmel duplicates based on if they have dsim orthologs
 dups_orthos <- dups_orthos %>%
-  group_by(dup_family,fly) %>%
+  group_by(dup_family_fly) %>%
   mutate(any_ortholog = case_when(any(dsim_dup) ~ T, T ~ F)) %>%
   mutate(dsim_ortho = case_when(!is.na(dsim_ortholog) ~ T, is.na(dsim_ortholog) ~ F)) %>%
   mutate(all_ortholog =  case_when(all(dsim_dup) ~ T, T ~ F)) %>%
@@ -140,15 +163,25 @@ dups_orthos <- dups_orthos %>%
 
 
 # make a frequency distribution plot 
-plot_freq_dist_colored <- dups_orthos[c('dup','fly','dsim_dup')]
+dups_orthos$gene_group <- paste0(dups_orthos$fly,'_',dups_orthos$dup)
+plot_freq_dist_colored <- dups_orthos[c('gene_group','fly','dsim_dup')]
+
+Row_Groups <- read.csv("./Row_Groups.tsv", sep="")
+plot_freq_dist_colored <- merge(plot_freq_dist_colored,Row_Groups,by='gene_group')
 
 
 #########
+# dup rows 
+
+#write.table(plot_freq_dist_colored,file='plot_freq_dist_colored.tsv')
+
+h <- plot_freq_dist_colored %>% sample_n(100, replace = FALSE)
+
 fly_counts <- plot_freq_dist_colored %>%
-  group_by(dup) %>%
-  mutate(x_axis = n_distinct(fly)) %>%
+  group_by(row_group) %>%
+  mutate(x_axis = n_distinct(name)) %>%
   ungroup() %>%
-  distinct(dup,dsim_dup, .keep_all = T) %>%
+  #distinct(row_group,dsim_dup, .keep_all = T) %>%
   group_by(x_axis,dsim_dup) %>%
   mutate(y_axis = n()) %>%
   ungroup() %>%
@@ -191,32 +224,15 @@ ggsave("./Plots/dsim_freq_dist_barplot.jpg", plot = gg, width = 12, height = 6)
 ############################
 
 
+colnames(Row_Groups)<- c('first_col','row_group','name','gene_group')
+t <- merge(dups_orthos,Row_Groups,by='gene_group')
 
-
-plot_freq_dist_colored <- dups_orthos[c('dup','fly','dsim_dup','dup_chrom')]
-
-
-all_chrom <- plot_freq_dist_colored %>%
-  select(-dsim_dup) %>%
-  group_by(dup,fly) %>%
-  mutate(x_axis = n())
-  
-  
-
-
-
-
-
-
-
-table(plot_freq_dist_colored$fly,plot_freq_dist_colored$dup_chrom)
-
-
+plot_freq_dist_colored <- t[c('row_group','name','dsim_dup','dup_chrom')]
 
 all_chrom <- 
   plot_freq_dist_colored %>%
-  group_by(dup) %>%
-  mutate(x_axis = n_distinct(fly)) %>%
+  group_by(row_group) %>%
+  mutate(x_axis = n_distinct(name)) %>%
   ungroup() %>%
   #distinct(dup,fly,dsim_dup,dup_chrom, .keep_all = T) %>%
   group_by(x_axis,dsim_dup,dup_chrom) %>%
@@ -247,10 +263,10 @@ plot_all_chrom <-
 
 
 dup_w_ortho_chrom <- plot_freq_dist_colored %>%
-  group_by(dup) %>%
-  mutate(x_axis = n_distinct(fly)) %>%
+  group_by(row_group) %>%
+  mutate(x_axis = n_distinct(name)) %>%
   ungroup() %>%
-  distinct(dup,dsim_dup,dup_chrom, .keep_all = T) %>%
+  distinct(row_group,dsim_dup,dup_chrom, .keep_all = T) %>%
   group_by(x_axis,dsim_dup,dup_chrom) %>%
   mutate(y_axis = n()) %>%
   ungroup() %>%
@@ -272,10 +288,10 @@ plot_dup_w_ortho_chrom <-
 
 
 dup_NO_ortho_chrom <- plot_freq_dist_colored %>%
-  group_by(dup) %>%
-  mutate(x_axis = n_distinct(fly)) %>%
+  group_by(row_group) %>%
+  mutate(x_axis = n_distinct(name)) %>%
   ungroup() %>%
-  distinct(dup,dsim_dup,dup_chrom, .keep_all = T) %>%
+  distinct(row_group,dsim_dup,dup_chrom, .keep_all = T) %>%
   group_by(x_axis,dsim_dup,dup_chrom) %>%
   mutate(y_axis = n()) %>%
   ungroup() %>%

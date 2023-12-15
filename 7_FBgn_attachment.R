@@ -85,7 +85,16 @@ write.table(my_FBgns,'./gn_FBgn_FBpp.tsv')
 
 
 my_FBgns <- my_FBgns[!my_FBgns$fly %in% c('I23','ZH26','N25','T29A','B59'),]
+my_FBgns$gene_group <- paste0(my_FBgns$fly,'_',my_FBgns$gn)
 
+
+trash <- my_FBgns %>%
+  group_by(fly) %>%
+  summarize(l=length(unique(gene_group)))
+
+
+
+#
 
 t <- my_FBgns %>%
   group_by(fly) %>%

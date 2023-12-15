@@ -46,6 +46,27 @@ sd <- chrom_info %>%
   summarize(sd_length = sd(length), mean_length = mean(length),
             sd_n_genes = sd(n_genes), mean_n_genes = mean(n_genes))
 
+colnames(t) <- c('Chromosome',
+                 'Length variation (sd)',
+                 'Length average',
+                 'Number of genes variation (sd)',
+                 'Number of genes average')
+
+t <- as.data.frame(t) %>%
+  mutate_if(is.numeric, ~scales::comma(.))
+
+
+kable(t, format = "html") %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, border_right = TRUE) %>%
+  column_spec(2:5, border_right = TRUE) %>%
+  row_spec(0, bold = TRUE, background = "#f2f2f2") %>%
+  #add_header_above(c(" ", "Length" = 2, "Number of genes" = 2), align = "center") %>%
+  add_header_above(c("Chromosomal Information" = 5), align = "center")
+
+
+
+
 # calculate gc content
 gc_content <- data.frame(
   Name = names(genomes),
@@ -288,7 +309,7 @@ ggsave("./Plots/chrom_dup_heatmap.jpg", plot = gg, width = 7, height = 5)
 equiv_genes <- read.csv("./Equivalent_Genes.tsv", sep="")
 dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
 
-t <- equiv_genes %>% sample_n(10000, replace = FALSE)
+t <- equiv_genes %>% sample_n(100, replace = FALSE)
 
 
 t <- t %>%
@@ -406,7 +427,7 @@ plot_n_more_than_1_copy <- ggplot(n_more_than_1_copy,aes(x=Var1,y=Freq)) +
 
 
 plot_n_same_copies # number of flies with the same amount of copies 
-n_more_than_1_copy # number of flies with >1 copy (can be 2 copies while the rest have 300)
+plot_n_more_than_1_copy # number of flies with >1 copy (can be 2 copies while the rest have 300)
 # bars add up to the 41,611 duplicate copies 
 #########################################################################
 # frequency plot 
@@ -566,8 +587,27 @@ ggsave("./Plots/chrom.jpg", plot = gg, width = 15, height = 10)
 
 #write.table(t,file='Equivalent_Genes_Chromosomes_sd_mean.tsv')
 t <- read.csv("./Equivalent_Genes_Chromosomes_sd_mean.tsv", sep="")
+dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
+#dups$gene_group <- paste0(dups$fly,'_',dups$dup)
+colnames(dups)[2] <- 'gene_group'
 
-any(duplicated(t[c('gene_group','chrom')]))
+p <- merge(t,dups,by='gene_group')
+
+gg <- ggplot(p,aes(x=chrom,y=sd, color=chrom)) +
+  geom_boxplot() +
+  #scale_y_log10() +
+  theme_bw() + 
+  xlab('Chromosome') +
+  ylab('Variation in Copy Number')+
+  theme(legend.position = "none") + 
+  ggpubr::stat_compare_means(comparisons = list(c('X', '2L'),
+                                                c('X', '2R'),
+                                                c('X', '3L'),
+                                                c('X', '3R')),
+                             label = "p.signif",
+                             method = "t.test")
+ggsave("./Chrom_SD_Boxplot.jpg", plot=gg, width = 5, height = 6)
+
 
 
 #
@@ -653,6 +693,112 @@ same_chrom <- dups[dups$same_chrom_fam == 'same_chrom',]
   #                      test = 't.test') 
   
 ggsave("./Plots/chrom_dist_between_dups_boxplot.jpg", plot = gg, width = 7, height = 8)
+
+
+
+
+
+##################################################################################
+
+
+
+plot_freq_dist_colored <- read.csv("./plot_freq_dist_colored.tsv", sep="")
+
+t <- plot_freq_dist_colored
+
+t <- t[!duplicated(t),]
+
+p <- t[!duplicated(t[c('gene_group','fly','dsim_dup')]),]
+freq_dist <- as.data.frame(table(p$row_group,p$name,p$dsim_dup))
+freq_dist <- as.data.frame(table(freq_dist$Var1,freq_dist$Freq,freq_dist$Var3))
+freq_dist <- freq_dist[!freq_dist$Var2==0,]
+freq_dist <- freq_dist[!freq_dist$Freq==0,]
+freq_dist <- as.data.frame(table(freq_dist$Freq,freq_dist$Var3))
+
+
+kk <- t %>%
+  group_by(row_group) %>%
+  mutate(x_axis = n_distinct(name)) %>%
+  ungroup() %>%
+  group_by(dsim_dup,x_axis,row_group) %>% #row_group
+  mutate(y_axis = n())
+
+ggplot(g,aes(x=Var1,y=Freq, fill=Var2)) +
+  geom_bar(stat='identity',position='stack') +
+  #scale_x_discrete(limits=factor(1:52)) + # not 52 without crappy assemblies 
+  xlab('Number of flies duplicate is present in') +
+  ylab('Freq') +
+  theme_bw()
+
+ggplot(g,aes(x=Var1,y=Freq)) +
+  geom_bar(stat='identity',position='stack') +
+  #scale_x_discrete(limits=factor(1:52)) + # not 52 without crappy assemblies 
+  xlab('Number of flies duplicate is present in') +
+  ylab('Frequency') +
+  theme_bw()
+
+
+
+##########################
+
+dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
+equiv_genes <- read.csv("./Equivalent_Genes_bitscore.tsv", sep="")
+
+
+dups <- dups %>%
+  select(dup, dup_family) %>%
+  group_by(dup_family) %>%
+  mutate(n_copies_in_fam = n())
+
+dups <- merge(equiv_genes, dups, by.x = 'gene_group', by.y = 'dup')
+
+
+dups_equiv_counts <- dups %>%
+  mutate_at(vars(2:48), ~ str_count(as.character(.), ",")) %>%
+  mutate_at(vars(2:48), ~ . + 1)
+
+
+# n duplicated same amount of copies 
+
+n_same_copies <- dups_equiv_counts %>%
+  mutate_all(~ifelse(is.na(.), 0, .)) %>%
+  mutate_at(vars(2:48), ~ coalesce(., n_copies_in_fam)) %>%
+  rowwise() %>%
+  mutate(n_same_n_duplicated = sum(across(2:48) == n_copies_in_fam, na.rm = TRUE)) 
+#%>%
+#mutate(n_same_n_duplicated = n_same_n_duplicated - 1)
+
+
+
+n_same_copies <- n_same_copies %>%
+  filter(str_starts(gene_group, "TOM"))
+
+
+# keep only one copy per dup family (the copy with largest number of flies with same n copies)
+t <- n_same_copies %>%
+  group_by(dup_family) %>%
+  filter(n_same_n_duplicated == max(n_same_n_duplicated))
+  
+
+p <- as.data.frame(table(t$n_same_n_duplicated))
+ggplot(p,aes(x=Var1,y=Freq)) +
+  geom_bar(stat='identity') +
+  #scale_x_discrete(limits=factor(1:52)) + # not 52 without crappy assemblies 
+  xlab('Number of flies duplicate is present in') +
+  ylab('Freq') +
+  theme_bw()
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
