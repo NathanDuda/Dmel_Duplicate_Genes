@@ -33,7 +33,7 @@ gene_pairs <- gene_pairs %>%
 # get duplicate gene families 
 
 fly_name_list <- read.table("./Individuals_List_47.txt", quote="\"", comment.char="")
-dup_families <- as.data.frame(matrix(nrow=0,ncol=3))
+dup_families <- data.frame()
 
 # loop over all flies 
 for (row in 1:nrow(fly_name_list)){
@@ -43,7 +43,7 @@ for (row in 1:nrow(fly_name_list)){
   
   dup1_dup2 <- gene_pairs[gene_pairs$fly.x==name,c('gene_group.x','gene_group.y')]
   
-  edge_list <- data.frame(source = gene_pairs$gene_group.x, target = gene_pairs$gene_group.y)
+  edge_list <- data.frame(source = dup1_dup2$gene_group.x, target = dup1_dup2$gene_group.y)
   
   # Create a graph from the edge list
   graph <- graph.data.frame(edge_list, directed = FALSE)
@@ -66,27 +66,14 @@ for (row in 1:nrow(fly_name_list)){
   dup_families <- rbind(dup_families,node_communities)
   
   print(row)
-  
 }
-
-
-
-
 
 
 # merge gene information with duplicate families
 colnames(all_annotations) <- c('dup','chrom','prot','nchar','fly')
-dups <- left_join(all_annotations,dup_families,by=c('fly','dup'))
+dups <- merge(all_annotations,dup_families,by=c('fly','dup'))
 
-
-dups <- dups[!duplicated(dups),]
-table(dups$fly)
-
-
-
-
-
-
-
+# write to file
+write.table(dups,file='Duplicate_Gene_Families.tsv')
 
 
