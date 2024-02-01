@@ -1,4 +1,14 @@
 
+# function to extract sequences
+extract_sequence <- function(chrom, start, end, strand, genome) {
+  matches <- genome[names(genome) == chrom]
+  if (length(matches) > 0) {
+    seq <- subseq(matches, start, end)
+    #  if (strand == "-") {seq <- reverseComplement(seq)}
+    as.character(seq)
+  } 
+  else {NA}
+}
 
 
 source("startup.R")
@@ -8,6 +18,9 @@ fly_name_list <- read.table("./Individuals_List.txt", quote="\"", comment.char="
 
 # create empty dataframe for output
 all_annotations <- as.data.frame(matrix(ncol=13,nrow=0))
+
+# read in genomes to get nucelotide sequences
+genome <- readDNAStringSet("./Genome_Assemblies/A1.fasta")
 
 # loop over all flies 
 for (row in 1:nrow(fly_name_list)){
@@ -72,6 +85,34 @@ for (row in 1:nrow(fly_name_list)){
   # get the chromosomes for each gene
   annotations <- left_join(annotations,aa_per_chrom,by='gene_group')
   annotations <- annotations %>% fill(chrom, .direction = "up") %>% select(-V1)
+  
+  # get the nucleotide sequences for each gene
+  names(genome) <- sub(paste0(' ', name, '.fasta_'),'',names(genome))
+  
+  nuc_seqs <- annotations %>%
+    filter(type=='CDS')
+    
+  nuc_seqs$nuc <- mapply(
+    extract_sequence,
+    nuc_seqs$chrom,
+    nuc_seqs$start,
+    nuc_seqs$end,
+    nuc_seqs$strand,
+    MoreArgs = list(genome)
+  )
+  
+  
+  nuc_seqs <- nuc_seqs %>%
+    select(gene_group, chrom, nuc) %>%
+    group_by(gene_group) %>%
+    mutate(nuc = paste(nuc, collapse = "")) %>%
+    distinct() 
+  
+  annotations <- merge(annotations,nuc_seqs,by='gene_group')
+  
+  # remove stop codons
+  annotations$nuc <- substr(annotations$nuc, 1, nchar(annotations$nuc) - 3)
+  
   
   # get the proteins for each gene 
   aa$gene_group <- paste0('g',1:nrow(aa))

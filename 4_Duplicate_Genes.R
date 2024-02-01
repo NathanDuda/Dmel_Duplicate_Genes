@@ -4,7 +4,7 @@
 source('startup.R')
 
 
-# read in genes with their seqyences and information 
+# read in genes with their sequences and information 
 all_annotations <- read.csv("./Annotations_Gene.tsv", sep="")
 all_annotations <- all_annotations[c('gene_group','chrom','prot','nchar','fly')]
 
