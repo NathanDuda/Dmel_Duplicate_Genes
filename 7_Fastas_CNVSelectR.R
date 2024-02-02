@@ -94,20 +94,22 @@ pair_groups <- merge(pair_groups,prot_nucs,by='gene_group')
 
 #
 
+pair_groups <- pair_groups %>%
+  mutate(fly = str_extract(gene_group, "^[^_]+"))
+
+
 
 # write nucleotide and protein fasta files for the groups of pairs 
 for (group_number in 2:length(unique(pair_groups$group))) {
   group_rows <- pair_groups %>% filter(group == group_number)
   
-  append_num <- 0 
   group_num <- as.numeric(group_number)
   group_num_orig <- group_num
   
   for (row_num in 1:nrow(group_rows)) {
     row <- group_rows[row_num,]
-    
-    append_num <- append_num + 1
-    group_num <- paste0(group_num_orig, '.', append_num)
+    fly_name <- gsub('-','_',row$fly)
+    group_num <- paste0(group_num_orig, '_', fly_name)
     
     output_file <- paste0('./CNVSelectR/Nucleotide_Sequences/group_',group_num,'.fa')  
     cat(">", row$gene_group, '\n', row$nuc, "\n", file = output_file, append = T, sep = '')
