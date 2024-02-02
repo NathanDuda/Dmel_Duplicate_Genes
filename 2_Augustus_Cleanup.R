@@ -4,7 +4,7 @@ extract_sequence <- function(chrom, start, end, strand, genome) {
   matches <- genome[names(genome) == chrom]
   if (length(matches) > 0) {
     seq <- subseq(matches, start, end)
-    #  if (strand == "-") {seq <- reverseComplement(seq)}
+      if (strand == "-") {seq <- reverseComplement(seq)}
     as.character(seq)
   } 
   else {NA}
@@ -14,19 +14,19 @@ extract_sequence <- function(chrom, start, end, strand, genome) {
 source("startup.R")
 
 # read in list with all fly names 
-fly_name_list <- read.table("./Individuals_List.txt", quote="\"", comment.char="")
+fly_name_list <- read.table("./Individuals_List_47.txt", quote="\"", comment.char="")
 
 # create empty dataframe for output
 all_annotations <- as.data.frame(matrix(ncol=13,nrow=0))
-
-# read in genomes to get nucelotide sequences
-genome <- readDNAStringSet("./Genome_Assemblies/A1.fasta")
 
 # loop over all flies 
 for (row in 1:nrow(fly_name_list)){
   
   # get name of current fly 
   name <- fly_name_list[row,1]
+  
+  # get genome of fly
+  genome <- readDNAStringSet(paste0("./Genome_Assemblies/", name, ".fasta"))
   
   # import the dataframe 
   aa <- read.csv(paste0("./Prot_Fastas/",name,"_annotations.fasta"), sep="", header = F)
@@ -102,12 +102,29 @@ for (row in 1:nrow(fly_name_list)){
   )
   
   
-  nuc_seqs <- nuc_seqs %>%
-    select(gene_group, chrom, nuc) %>%
+  nuc_seqs_neg <- nuc_seqs %>%
+    filter(strand == '-') %>%
+    select(gene_group, chrom, nuc, strand, start) %>%
     group_by(gene_group) %>%
+    arrange(desc(start)) %>%
     mutate(nuc = paste(nuc, collapse = "")) %>%
-    distinct() 
+    distinct(gene_group, chrom, nuc, strand)
   
+  nuc_seqs_pos <- nuc_seqs %>%
+    filter(strand == '+') %>%
+    select(gene_group, chrom, nuc, strand, start) %>%
+    group_by(gene_group) %>%
+    arrange(start) %>%
+    mutate(nuc = paste(nuc, collapse = "")) %>%
+    distinct(gene_group, chrom, nuc, strand)
+  
+  nuc_seqs <- rbind(nuc_seqs_pos,nuc_seqs_neg)
+  
+  
+  # keep only the gene in the annotations
+  annotations <- annotations[annotations$type == 'gene',]
+  
+  # merge nuc sequences with the gene annotations
   annotations <- merge(annotations,nuc_seqs,by='gene_group')
   
   # remove stop codons
@@ -134,14 +151,11 @@ all_annotations$prot <- sub(">g\\d+", "", all_annotations$prot)
 # remove the proteins that dont start with M
 all_annotations <- all_annotations[grepl("^M", all_annotations$prot), ]
 
-# get adjusted protein length
-all_annotations$nchar <- nchar(all_annotations$prot)
-
 # make gn id contain fly name since same id is different gene in different fly
 all_annotations$gene_group <- paste0(all_annotations$fly,'_',all_annotations$gene_group)
 
 # write to table
-write.table(all_annotations,'Annotations.tsv')
+#write.table(all_annotations,'Annotations.tsv')
 
-all_annotations <- all_annotations[all_annotations$type == 'gene',]
+# write to file
 write.table(all_annotations, file = 'Annotations_Gene.tsv')
