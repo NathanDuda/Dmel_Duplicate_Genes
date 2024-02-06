@@ -1,6 +1,6 @@
 
 
-
+# require these to be in duplicate genes blastp output 
 
 
 source("startup.R")
@@ -11,13 +11,18 @@ names <- c(
   'RAL-176','RAL-177','RAL-375','RAL-426','RAL-737','RAL-855','SLA-001','STO-022','TEN-015','TOM-007',
   'TOM-008')
 
-dups <- read.csv("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Duplicate_Gene_Families.tsv", sep="")
-dups <- dups[c('dup')]
-new_columns_df <- as.data.frame(setNames(rep(list(0), length(names)), names))
-dups <- bind_cols(dups, new_columns_df)
+#dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
+#dups <- dups[c('dup')]
+#new_columns_df <- as.data.frame(setNames(rep(list(0), length(names)), names))
+#dups <- bind_cols(dups, new_columns_df)
 
 
 all_genes <- read.csv("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Annotations_Gene.tsv", sep="")
+
+all_prot_lengths <- all_genes[c('gene_group','prot')]
+all_prot_lengths$nchar <- nchar(all_prot_lengths$prot)
+all_prot_lengths <- all_prot_lengths[c('gene_group','nchar')]
+
 all_genes <- all_genes[c('gene_group')]
 new_columns_df <- as.data.frame(setNames(rep(list(0), length(names)), names))
 all_genes <- bind_cols(all_genes, new_columns_df)
@@ -41,14 +46,29 @@ for (name in names) {
       blastp$sseqid <- paste0(name,'_',blastp$sseqid)
       
       rev_blastp <- read.delim(paste0('./Equivalent_Genes_Blastp_Output/Rev_Blastp_Output/q_',name,'_db_',second_name,'_blastp.tsv'), header=FALSE)
-      colnames(rev_blastp) <- c('qseqid', 'sseqid', 'evalue') # REMOVE 
-      #colnames(rev_blastp) <- c('qseqid', 'sseqid', 'evalue', 'pident', 'bitscore', 'length') # PUT 
+      colnames(rev_blastp) <- c('qseqid', 'sseqid', 'evalue', 'pident', 'bitscore', 'length') # PUT 
       rev_blastp$qseqid <- paste0(name,'_',rev_blastp$qseqid)
       rev_blastp$sseqid <- paste0(second_name,'_',rev_blastp$sseqid)
       
+      
+      # get protein lengths
+      colnames(all_prot_lengths) <- c('qseqid','qlen')
+      blastp <- merge(blastp,all_prot_lengths,by='qseqid')
+      rev_blastp <- merge(rev_blastp,all_prot_lengths, by='qseqid')
+      
+      colnames(all_prot_lengths) <- c('sseqid','slen')
+      blastp <- merge(blastp,all_prot_lengths,by='sseqid')
+      rev_blastp <- merge(rev_blastp,all_prot_lengths,by='sseqid')
+      
       # keep only quality hits 
-      blastp <- blastp %>% filter((bitscore >= 2*length) & (length>=100) & (pident >= 99))
+      #blastp <- blastp %>% filter((bitscore >= 2*length) & (length>=100) & (pident >= 99))
       #rev_blastp <- rev_blastp %>% filter((bitscore >= 2*length) & (length>=100) & (pident >= 99)) # PUT 
+      blastp <- blastp %>% 
+        filter(length >= 100 & pident >= 99) %>%
+        filter(case_when((qlen>slen  & ((.90*qlen)<length))~T, # require the hit be at least 90% of the longer gene 
+                         (slen>qlen  & ((.90*slen)<length))~T,
+                         (slen==qlen & ((.90*slen)<length))~T)) # IGNORES SEPARATE BLAST HITS TO SAME GN
+      
       
       
       # keep only reciprocal q/db and db/q hits

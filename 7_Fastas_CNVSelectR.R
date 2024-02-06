@@ -1,4 +1,7 @@
 
+# global alignment
+
+
 # get only duplicate pairs
 # align duplicate pairs
 # have each file with all equivalent duplicate pair(s)
@@ -21,7 +24,10 @@ equiv_counts <- equiv_counts[pairs, ]
 
 
 # get the duplicate status of the reference gene using the global alignments
-dups <- read.csv("./Duplicate_Gene_Families.tsv", sep="")
+dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
+dups <- dups[c('fly','dup','dup_chrom','dup_prot','dup_nchar','dup_family')]
+colnames(dups) <- c('fly','dup','chrom','prot','nchar','dup_family')
+
 
 dup_pairs <- dups %>%
   group_by(fly, dup_family) %>%

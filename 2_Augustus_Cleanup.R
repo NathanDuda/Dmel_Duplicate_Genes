@@ -125,6 +125,7 @@ for (row in 1:nrow(fly_name_list)){
   annotations <- annotations[annotations$type == 'gene',]
   
   # merge nuc sequences with the gene annotations
+  nuc_seqs <- nuc_seqs[c('gene_group','nuc')]
   annotations <- merge(annotations,nuc_seqs,by='gene_group')
   
   # remove stop codons
@@ -153,9 +154,6 @@ all_annotations <- all_annotations[grepl("^M", all_annotations$prot), ]
 
 # make gn id contain fly name since same id is different gene in different fly
 all_annotations$gene_group <- paste0(all_annotations$fly,'_',all_annotations$gene_group)
-
-# write to table
-#write.table(all_annotations,'Annotations.tsv')
 
 # write to file
 write.table(all_annotations, file = 'Annotations_Gene.tsv')
