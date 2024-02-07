@@ -270,7 +270,7 @@ CNVSelect_test_custom <- function(input_file, fasta_file){
 
 
 
-
+file_name <- 'group_3664.fa'
 
 group = 0 
 output_df <- data.frame()
@@ -292,26 +292,28 @@ for (file_name in list.files('./CNVSelectR/Blastp_Dups_Combined_Codon_Alignments
   write.table(input_file_table,file='./CNVSelectR/input_file.tsv')
   input_file <- './CNVSelectR/input_file.tsv'
   
-  out <- CNVSelect_test_custom(input_file,fasta_file)
   
-  if (!any(is.na(out))){
-    for (i in 1:length(out[['dS']])) {
-      
-      ds <- out[['dS']][i]
-      name <- colnames(out[['dS']])[i]  
-      pval <- out[['p_val']][i]
-
-      output_df <- rbind(output_df, data.frame(name,ds,pval,group))
+  
+  tryCatch({# error whenever internal stop codons 
+    out <- CNVSelect_test_custom(input_file, fasta_file)
+    
+    if (!any(is.na(out))) {
+      for (i in 1:length(out[['dS']])) {
+        ds <- out[['dS']][i]
+        name <- colnames(out[['dS']])[i]  
+        pval <- out[['p_val']][i]
+        
+        output_df <- rbind(output_df, data.frame(name, ds, pval, group))
+      }
     }
-  }
+  }, error = function(e) {
+    # If an error occurs, print a message and continue with the loop
+    print(paste("Error occurred for file:", file_name))
+  })
+  
+  print(group)
 }
 
 
-
-t <- output_df %>%
-  group_by(group) %>%
-  mutate(n_flies_in = n())
-
-
-
+write.table(output_df, 'CNVSelectR_Output.tsv')
 
