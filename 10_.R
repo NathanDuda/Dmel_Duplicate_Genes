@@ -15,7 +15,7 @@ cnvselectr_output <- cnvselectr_output %>%
 
 plot <- ggplot(cnvselectr_output, aes(x=ds, y=n_flies_in, color=signif)) +
   geom_point() +
-  scale_y_continuous(breaks = c(0, 10, 20, 30, 40, 50), labels = c(0, 10, 20, 30, 40, 47)) +
+  scale_y_continuous(breaks = c(0, 10, 20, 30, 40, 50), labels = c(0, 10, 20, 30, 40, 50)) +
   xlim(0,1) +
   theme_bw() +
   labs(x='Ds', y='Frequency', color='Significant')
@@ -159,6 +159,8 @@ YO_dmel_exp <- YO_dmel_exp %>%
   filter(rowSums(select(., 2:15)) > 0) %>%
   filter(!FBgnID=='-')
 
+tau <- YO_dmel_exp
+
 rownames(YO_dmel_exp) <- YO_dmel_exp$FBgnID
 YO_dmel_exp <- YO_dmel_exp %>% select(-FBgnID)
 YO_dmel_exp <- YO_dmel_exp / rowSums(YO_dmel_exp)
@@ -205,6 +207,67 @@ ggplot(t, aes(x=dup_1_chrom, color=signif)) +
   theme_bw()
 
 
+# tau
 
+
+
+rownames(tau) <- tau$FBgnID
+tau <- tau %>% select(-FBgnID)
+
+library(tispec)
+
+tau <- calcTau(tau)
+tau$fbgn <- rownames(tau)
+
+tau <- tau[c('fbgn','tau')]
+
+t <- merge(x,tau,by='fbgn')
+
+
+ggplot(t, aes(x=signif, y=tau)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list(c("No", "Yes")), test = "t.test", map_signif_level = TRUE,)
+
+
+# ppi
+
+
+
+# import the three ppi data
+ppi_1 <- read.delim("./PPI_Data/FlyBi_data_20210205.csv")
+ppi_1 <- ppi_1[c('FBgn1','FBgn2')]
+
+ppi_2 <- read.delim("./PPI_Data/fly_other_physical.txt")
+ppi_2 <- ppi_2[c('FLY_GENE1','FLY_GENE2')]
+
+ppi_3 <- read.delim("./PPI_Data/flybase_ppi.txt")
+ppi_3 <- ppi_3[c('FLY_GENE1','FLY_GENE2')]
+
+# combine all three datasets
+ppi_2 <- rbind(ppi_2,ppi_3)
+colnames(ppi_2) <- colnames(ppi_1)
+ppi <- rbind(ppi_1,ppi_2)
+
+
+ppi <- ppi[!duplicated(ppi),]
+
+ppi_1 <- ppi[1]
+ppi_2 <- ppi[2]
+
+colnames(ppi_1) <- 'ppi'
+colnames(ppi_2) <- 'ppi'
+
+ppi <- rbind(ppi_1,ppi_2)
+
+ppi <- as.data.frame(table(ppi$ppi))
+colnames(ppi) <- c('fbgn','ppi')
+
+
+p <-  merge(x,ppi,by='fbgn')
+
+
+ggplot(p, aes(x=signif, y=ppi)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list(c("No", "Yes")), test = "t.test")
 
 
