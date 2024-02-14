@@ -1,11 +1,16 @@
 
-# global alignment
+# blastp dups
 
 
-# get only duplicate pairs
-# align duplicate pairs
-# have each file with all equivalent duplicate pair(s)
+
+
+
 source("startup.R")
+
+
+
+dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
+
 
 
 seqs <- read.csv("./Annotations_Gene.tsv", sep="")
@@ -22,6 +27,7 @@ remove_after_second_comma <- function(x) {
 
 all_genes[] <- lapply(all_genes, function(x) sapply(x, remove_after_second_comma))
 
+
 # count the number of genes 
 equiv_counts <- all_genes %>%
   mutate_at(vars(2:48), ~ case_when(.==0~0,
@@ -33,25 +39,24 @@ equiv_counts <- equiv_counts[pairs, ]
 
 
 # get the duplicate status of the reference gene using the global alignments
-dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
 dups <- dups[c('fly','dup','dup_chrom','dup_prot','dup_nchar','dup_family')]
 colnames(dups) <- c('fly','dup','chrom','prot','nchar','dup_family')
 
 
 dup_pairs <- dups %>%
-  group_by(fly, dup_family) %>%
+  group_by(dup_family) %>%
   mutate(n_copies = n()) %>%
   filter(n_copies==2)
 
 dup_pairs_combined <- dup_pairs %>%
   group_by(fly, dup_family) %>%
-  summarise(dup_pair = paste(dup, collapse = ','), .groups='keep') #%>%
-  
-  # get the reversed duplicate pair 
-  #mutate(dup_pair_reversed = dup_pair) %>%
-  #separate(dup_pair_reversed, into = c('second','first'), sep = ",") %>%
-  #mutate(dup_pair_reversed = paste0(first,',',second)) %>%
-  #select(-first,-second)
+  summarise(dup_pair = paste(dup, collapse = ','), .groups='keep') %>%
+
+# get the reversed duplicate pair # SHOULD BE UNNECESSARY bc ordered before 
+  mutate(dup_pair_reversed = dup_pair) %>%
+  separate(dup_pair_reversed, into = c('second','first'), sep = ",") %>%
+  mutate(dup_pair_reversed = paste0(first,',',second)) %>%
+  select(-first,-second)
 
 
 # place the gene_group gene into the correct column of the equivalent genes dataframe 
@@ -78,6 +83,11 @@ all_genes <- all_genes %>%
   mutate_at(vars(1:47), ~ case_when(
     . %in% dup_pairs$dup.x ~ paste0(., ',', dup_pairs$dup.y[match(., dup_pairs$dup.x)]),
     TRUE ~ .))
+
+# DO NOT UNQUOTE:
+#write.table(all_genes,'Corrected_Equivalent_Genes.tsv')####### BEFORE UNCOMMENTING THIS:
+# THIS SHOULD ONLY BE RUN **WITHOUT** RUNNING THE 
+# "keep only the first two copies for genes that have more than 2 copies" SECTION WAY ABOVE
 
 # keep equivalent genes only if they are duplicate pairs found by global alignment
 pair_groups <- all_genes %>%
@@ -126,14 +136,21 @@ for (group_number in 2:length(unique(pair_groups$group))) {
     fly_name <- gsub('-','_',row$fly)
     group_num <- paste0(group_num_orig, '_', fly_name)
     
-    output_file <- paste0('./CNVSelectR/Nucleotide_Sequences/group_',group_num,'.fa')  
+    output_file <- paste0('./CNVSelectR/Blastp_Dups_Nucleotide_Sequences/group_',group_num,'.fa')  
     cat(">", row$gene_group, '\n', row$nuc, "\n", file = output_file, append = T, sep = '')
     
-    output_file <- paste0('./CNVSelectR/Protein_Sequences/group_',group_num,'.fa')  
+    output_file <- paste0('./CNVSelectR/Blastp_Dups_Protein_Sequences/group_',group_num,'.fa')  
     cat(">", row$gene_group, '\n', row$prot, "\n", file = output_file, append = T, sep = '')
     
   }
 }
+
+
+
+
+
+
+
 
 
 

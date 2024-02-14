@@ -13,22 +13,22 @@ cnvselectr_output <- cnvselectr_output %>%
                             pval <= 0.05 ~ 'Yes'))
 
 
-plot <- ggplot(cnvselectr_output, aes(x=ds, y=n_flies_in, color=signif)) +
+cnvselectr_plot <- ggplot(cnvselectr_output, aes(x=ds, y=n_flies_in, color=signif)) +
   geom_point() +
   scale_y_continuous(breaks = c(0, 10, 20, 30, 40, 50), labels = c(0, 10, 20, 30, 40, 50)) +
   xlim(0,1) +
   theme_bw() +
   labs(x='Ds', y='Frequency', color='Significant')
 
-ggsave(plot, file = './CNVSelectR_Output.jpeg', height = 6, width = 10)
+ggsave(cnvselectr_plot, file = './CNVSelectR_Output.jpeg', height = 6, width = 10)
 
 ###
 # the stacks of same ds are caused by same duplicate pairs being in multiple families 
 # if duplicate pairs that are part of multiple families are completely not allowed,
 # there is not enough data:
-b <- cnvselectr_output[!(duplicated(cnvselectr_output$name) | duplicated(cnvselectr_output$name, fromLast = TRUE)), ]
+no_rep_dups_cnvselectr_output <- cnvselectr_output[!(duplicated(cnvselectr_output$name) | duplicated(cnvselectr_output$name, fromLast = TRUE)), ]
 
-ggplot(b, aes(x=ds, y=n_flies_in, color=signif)) +
+ggplot(no_rep_dups_cnvselectr_output, aes(x=ds, y=n_flies_in, color=signif)) +
   geom_point() +
   ylim(0,47) +
   xlim(0,1) +
@@ -48,14 +48,42 @@ cnvselectr_output <- merge(cnvselectr_output,genes,by='dup_1')
 colnames(genes) <- c('dup_2','dup_2_start','dup_2_end','dup_2_chrom')
 cnvselectr_output <- merge(cnvselectr_output,genes,by='dup_2')
 
-
 chrom_counts <- as.data.frame(table(cnvselectr_output$signif,cnvselectr_output$dup_1_chrom, cnvselectr_output$dup_2_chrom))
 
-
+# plot number of signif/not signif duplicate pairs per chrom 
 ggplot(chrom_counts, aes(x=Var2, y=Var3, fill=Freq)) +
   geom_tile() +
   facet_wrap(~ Var1) +
   labs(x='',y='')
+
+# keep only one unique signif value per equivalent gene group (each unique chrom combination is kept)
+one_per_eq_group <- cnvselectr_output %>%
+  distinct(group, signif, dup_1_chrom, dup_2_chrom) %>%
+  select(-group)
+
+one_per_eq_group <- as.data.frame(table(one_per_eq_group$signif, 
+                                        one_per_eq_group$dup_1_chrom, 
+                                        one_per_eq_group$dup_2_chrom))
+
+# plot
+ggplot(one_per_eq_group, aes(x=Var2, y=Var3, fill=Freq)) +
+  geom_tile() +
+  facet_wrap(~ Var1) +
+  labs(x='',y='')
+
+# check if most signif dup pairs are on same chromosome 
+same_diff_chrom <- cnvselectr_output %>%
+  mutate(same_diff_chrom = case_when(dup_1_chrom == dup_2_chrom ~ 'same',
+                                     T ~ 'diff'))
+
+table(same_diff_chrom$same_diff_chrom, same_diff_chrom$signif)
+
+
+same_diff_chrom_one_per_eq_group <- one_per_eq_group %>%
+  mutate(same_diff_chrom = case_when(Var2 == Var3 ~ 'same',
+                                     T ~ 'diff')) %>%
+  group_by(Var1,same_diff_chrom) %>%
+  summarize(n = sum(Freq), .groups='keep')
 
 
 
@@ -131,6 +159,7 @@ write.table(sig$fbgn, file = './Sig_FBgn_list.txt', row.names = FALSE, col.names
 
 #t <- pivot_wider(names_from = 'V5')
 
+write.table(x, './gn_fbgn_under_selection_or_not.tsv')
 
 
 YO_dmel_exp <- read.delim("C:/Users/17735/Downloads/Eight_Species/Raw_Data/YO_Expression/GSE99574_HiSAT2_dmel.nrc.YO.txt")
