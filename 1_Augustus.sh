@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Author: Nathan Duda
+# Purpose: Annotate the genomes of the 52 Drosomics genomes using AUGUSTUS 
 
 # list of names
 names=(
@@ -58,14 +60,13 @@ names=(
 )
 
 
-# running augustus 
+# run augustus 
 for name in "${names[@]}"; do
   ./Augustus/src/augustus --species=fly "./Input_Genomes/${name}.fasta" > "./Output_Annotations/${name}_annotations.gff" &
 done
 wait
 
-
-# formatting the output files 
+# format the output files 
 for name in "${names[@]}"; do
 cp "./Augustus_Output/${name}_annotations.aa" "./Prot_Fastas/${name}_annotations.fasta"
 done
@@ -76,7 +77,7 @@ sed -i 's/\.t1//g' "./${name}_annotations.fasta"
 done
 
 
-# getting the number of genes per chromosome: 
+# get the number of genes per chromosome: 
 for name in "${names[@]}"; do
   awk 'BEGIN { count = 0; inside_sequence = 0; }
        /sequence number/ { if (inside_sequence) print count; inside_sequence = 1; count = 0; next; }

@@ -1,6 +1,5 @@
 
 
-
 source("startup.R")
 
 
@@ -77,7 +76,7 @@ for (row in 1:nrow(fly_name_list)){
   all_orthologs <- rbind(all_orthologs,orthologs)
   
   print(row)
-
+  
 }
 
 ###########
@@ -189,7 +188,7 @@ fly_counts <- plot_freq_dist_colored %>%
 
 
 freq_dist <- ggplot(fly_counts, aes(fill = factor(dsim_dup,levels=c('No_Duplicated_Ortholog','Dsim_Ortholog_Duplicated')), 
-                       x = x_axis, y = y_axis)) + 
+                                    x = x_axis, y = y_axis)) + 
   geom_bar(position = "stack", stat='identity') +
   scale_x_discrete(limits = factor(1:47)) +
   theme_bw() +
@@ -213,10 +212,10 @@ perc <- ggplot(plot_freq_dist_percent, aes(x = x_axis, y = Percentage, fill = fa
   scale_fill_manual(values = c("hotpink3", "cornflowerblue"), name = "") +
   guides(fill = guide_legend(title = "", override.aes = list(fill = c("hotpink3", "cornflowerblue"))))
 
-  
+
 gg <- ggarrange(freq_dist,perc,nrow = 2, ncol = 1,
-          labels = c('A','B'),
-          align = 'v')
+                labels = c('A','B'),
+                align = 'v')
 
 ggsave("./Plots/dsim_freq_dist_barplot.jpg", plot = gg, width = 12, height = 6)
 
@@ -244,7 +243,7 @@ all_chrom <-
   ungroup() %>%
   select(-dsim_dup) %>%
   distinct() 
-  
+
 
 
 
@@ -339,10 +338,9 @@ freq <- ggplot(fly_counts, aes(x = x_axis, y = y_axis)) +
   xlab('') 
 
 gg <- ggarrange(freq,plot_all_chrom,nrow=2,ncol=1,align='v',labels=c('A','B'),
-          common.legend = T, legend = "right")
+                common.legend = T, legend = "right")
 
 ggsave("./Plots/freq_dist_chrom_barplots.jpg", plot = gg, width = 13, height = 6)
-
 
 
 

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Author: Nathan Duda
+# Purpose: Run blastp for each fly against itself to find duplicate genes 
 
 names=(
   "A1"
@@ -16,7 +18,6 @@ names=(
   "B2"
   "B3"
   "B4"
-  "B59"
   "B6"
   "COR-014"
   "COR-018"
@@ -24,7 +25,6 @@ names=(
   "COR-025"
   "GIM-012"
   "GIM-024"
-  "I23"
   "ISO-1"
   "JUT-008"
   "JUT-011"
@@ -37,7 +37,6 @@ names=(
   "MUN-015"
   "MUN-016"
   "MUN-020"
-  "N25"
   "ORE"
   "RAL-059"
   "RAL-091"
@@ -49,26 +48,18 @@ names=(
   "RAL-855"
   "SLA-001"
   "STO-022"
-  "T29A"
   "TEN-015"
   "TOM-007"
   "TOM-008"
-  "ZH26"
 )
-
 
 
 for name in "${names[@]}"; do
 
-  makeblastdb -in "./Prot_Fastas/${name}_prot.fasta" -out "./Prot_Blast_Output/Blast_Databases/${name}_db" -dbtype prot 
+  ./ncbi-blast-2.14.1+/bin/makeblastdb -in "./Prot_Fastas/${name}_annotations.fasta" -out "./Prot_Blast_Output/Blast_Databases/${name}_db" -dbtype prot 
 
-  blastp -query "./Prot_Fastas/${name}_prot.fasta" -db "./Prot_Blast_Output/Blast_Databases/${name}_db" -outfmt "6 qseqid sseqid length qstart qend qlen sstart send slen pident evalue" -out "./Prot_Blast_Output/${name}_blastp.tsv" &
+  ./ncbi-blast-2.14.1+/bin/blastp -query "./Prot_Fastas/${name}_annotations.fasta" -db "./Prot_Blast_Output/Blast_Databases/${name}_db" -outfmt "6 qseqid sseqid length qstart qend qlen sstart send slen pident bitscore evalue" -out "./Prot_Blast_Output/${name}_blastp.tsv" &
 
 done
-
 wait
-
-
-
-
 

@@ -1,6 +1,5 @@
 
 
-
 source("startup.R")
 
 # import annotations for all flies 
@@ -118,10 +117,6 @@ dups <- left_join(dups,dup_families,by=c('fly','dup'))
 
 # write to file 
 write.table(dups,'./Dsim/Duplicate_Proteins.tsv')
-
-
-
-
 
 
 

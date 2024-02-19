@@ -1,9 +1,8 @@
 
-
-# require these to be in duplicate genes blastp output 
-
-
+# Author: Nathan Duda
+# Purpose: Format the blastp output from each fly to get quality duplicate genes 
 source("startup.R")
+
 names <- c(
   'A1','A2','A3','A4','A5','A6','A7','AB8','AKA-017','AKA-018','B1','B2','B3','B4','B6','COR-014',
   'COR-018','COR-023','COR-025','GIM-012','GIM-024','ISO-1','JUT-008','JUT-011','KIE-094','LUN-004',
@@ -11,13 +10,8 @@ names <- c(
   'RAL-176','RAL-177','RAL-375','RAL-426','RAL-737','RAL-855','SLA-001','STO-022','TEN-015','TOM-007',
   'TOM-008')
 
-#dups <- read.csv("./Duplicate_Proteins.tsv", sep="")
-#dups <- dups[c('dup')]
-#new_columns_df <- as.data.frame(setNames(rep(list(0), length(names)), names))
-#dups <- bind_cols(dups, new_columns_df)
 
-
-all_genes <- read.csv("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Annotations_Gene.tsv", sep="")
+all_genes <- read.csv("./Annotations_Gene.tsv", sep="")
 
 all_prot_lengths <- all_genes[c('gene_group','prot')]
 all_prot_lengths$nchar <- nchar(all_prot_lengths$prot)
@@ -161,12 +155,7 @@ for (name in names) {
       #rm(blastp)
     }
   }
-  #rows that start with name 
-  #all <- all_genes %>%
-  #  filter(str_starts(gene_group, name)) %>%
-  #  mutate_all(~ ifelse(. == 0, NA, .))
-  #rev_result_df <- bind_rows(rev_result_df, all)
-  
+
   p = p + 1
   print(p)  
 }

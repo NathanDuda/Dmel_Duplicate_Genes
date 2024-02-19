@@ -1,33 +1,14 @@
 
-# blastp duplicate genes
-
-
-
+# Author: Nathan Duda
+# Purpose: Format the blastp output from each fly to get quality duplicate genes 
 source("startup.R")
 
 # import annotations for all flies 
-#all_annotations <- read.csv("./Annotations.tsv", sep="")
+all_annotations <- read.csv("./Annotations.tsv", sep="")
 
 # keep only the full gene information 
-#all_annotations <- all_annotations[all_annotations$type=='gene',]
-#write.table(all_annotations,file='./Annotations_Gene.tsv')
-all_annotations <- read.csv("./Annotations_Gene.tsv", sep="")
-
-# make sure no genes overlap
-#nonoverlapping_all_annotations <- all_annotations %>%
-#  group_by(chrom, fly) %>%
-#  arrange(start) %>%
-#  mutate(is_between = case_when(
-#    start >= lag(start) & start <= lag(end) ~ T,
-#    start >= lead(start) & start <= lead(end) ~ T,
-#    T ~ F)) %>%
-#  arrange(end) %>%
-#  mutate(is_between_end = case_when(
-#    end >= lag(start) & end <= lag(end) ~ T,
-#    end >= lead(start) & end <= lead(end) ~ T,
-#    T ~ F)) %>%
-#  ungroup()
-# they dont
+all_annotations <- all_annotations %>% filter(type == 'gene')
+write.table(all_annotations,file='./Annotations_Gene.tsv')
 
 
 # read in list with all fly names 
@@ -39,34 +20,19 @@ all_dups <- as.data.frame(matrix(ncol=34,nrow=0))
 # loop over all flies 
 for (row in 1:nrow(fly_name_list)){
   
-  # get name of current fly 
+  # get blastp output of current fly 
   name <- fly_name_list[row,1]
-  
   blastp <- read.delim(paste0("./Blastp_Output/",name,"_blastp.tsv"), header=FALSE)
-  
   colnames(blastp) <- c('qseqid','sseqid','length','qstart','qend','qlen','sstart','send','slen','pident','bitscore','evalue')
   
-  # remove hits to itself
-  blastp <- blastp[blastp$qseqid != blastp$sseqid,]
-  
-  # filter out hits with percentage identity lower than or equal to 95 and 
-  # length lower than or equal to 100 aa
-  # bitscore greater than at least 2*length of match 
-  #blastp <- blastp %>% 
-  #  filter((bitscore >= 2*length) & (length >= 100) & (pident >= 99)) #%>%
-  # require the hit be at least 90% of the longer gene 
-  #filter(case_when((qlen>slen  & ((.90*qlen)<length))~T,
-  #                 (slen>qlen  & ((.90*slen)<length))~T,
-  #                 (slen==qlen & ((.90*slen)<length))~T)) # IGNORES SEPARATE BLAST HITS TO SAME GN
-  
+  # get quality blast hits 
   blastp <- blastp %>% 
-    filter(length >= 100 & pident >= 99) %>%
+    filter(qseqid != sseqid) %>% # remove hits to itself
+    filter(length >= 100 & pident >= 99) %>% # keep only hits with hit length >= 100 amino acids and percent identity >= 99
     filter(case_when((qlen>slen  & ((.90*qlen)<length))~T, # require the hit be at least 90% of the longer gene 
                      (slen>qlen  & ((.90*slen)<length))~T,
                      (slen==qlen & ((.90*slen)<length))~T)) # IGNORES SEPARATE BLAST HITS TO SAME GN
               
-  
-  
   # keep only the longest hit for same hits 
   blastp <- blastp %>% 
     arrange(length) %>%
@@ -108,20 +74,12 @@ for (row in 1:nrow(fly_name_list)){
   print(row)
 }
 
-
 # write to file 
 write.table(all_dups,'./Duplicate_Hits.tsv')
-#write.table(all_dups,'./Duplicate_Hits_30_Pident_Cutoff.tsv')
-#write.table(all_dups,'./Duplicate_Hits_bitscore.tsv')
+
 
 
 # get duplicate families 
-
-#all_dups <- read.csv("./Duplicate_Hits.tsv", sep="")
-
-fly_name_list <- read.table("./Individuals_List_47.txt", quote="\"", comment.char="")
-
-
 dup_families <- as.data.frame(matrix(nrow=0,ncol=3))
 
 # loop over all flies 
@@ -134,16 +92,16 @@ for (row in 1:nrow(fly_name_list)){
   
   edge_list <- data.frame(source = dup1_dup2$dup1, target = dup1_dup2$dup2)
   
-  # Create a graph from the edge list
+  # make graph from edge list
   graph <- graph.data.frame(edge_list, directed = FALSE)
   
-  # Perform community detection using the Louvain algorithm
+  # community detection using Louvain algorithm
   community <- cluster_louvain(graph)
   
-  # Add the community labels to the nodes
+  # add community labels to the nodes
   #V(graph)$community <- membership(community)
   
-  # Get the community labels for each node
+  # format into dataframe 
   node_communities <- data.frame(
     node = community$names,
     community = community$membership
@@ -159,8 +117,6 @@ for (row in 1:nrow(fly_name_list)){
 }
 
 
-
-
 dup1_info <- all_dups[, c('fly', 'dup1', 'dup1_start_on_chrom', 'dup1_end_on_chrom', 'dup1_n', 'dup1_strand', 'dup1_s', 'dup1_length', 'dup1_approx_expected_prot_len', 'dup1_chrom', 'dup1_nuc', 'dup1_prot', 'dup1_nchar')]
 dup2_info <- all_dups[, c('fly', 'dup2', 'dup2_start_on_chrom', 'dup2_end_on_chrom', 'dup2_n', 'dup2_strand', 'dup2_s', 'dup2_length', 'dup2_approx_expected_prot_len', 'dup2_chrom', 'dup2_nuc', 'dup2_prot', 'dup2_nchar')]
 
@@ -171,25 +127,14 @@ dups <- rbind(dup1_info,dup2_info)
 
 # merge with duplicate families
 dups <- left_join(dups,dup_families,by=c('fly','dup'))
-
-
 dups <- dups[!duplicated(dups),]
-table(dups$fly)
-
 
 # remove the crappy assemblies
 dups <- dups[!dups$fly %in% c('I23','ZH26','N25','T29A','B59'),]
 
-
-#
+# add fly name to each dup family name 
 dups$dup_family <- paste0(dups$fly,'_',dups$dup_family)
 
-
 # write to file 
-#write.table(dups,'./Duplicate_Proteins_30_Pident_Cutoff.tsv')
 write.table(dups,'./Duplicate_Proteins.tsv')
-
-
-
-
 

@@ -1,5 +1,10 @@
 
-# function to extract sequences
+# Author: Nathan Duda
+# Purpose: Format the AUGUSTUS annotation output into a tidy dataframe 
+source("startup.R")
+
+
+# function to extract sequences using coordinates 
 extract_sequence <- function(chrom, start, end, strand, genome) {
   matches <- genome[names(genome) == chrom]
   if (length(matches) > 0) {
@@ -10,8 +15,6 @@ extract_sequence <- function(chrom, start, end, strand, genome) {
   else {NA}
 }
 
-
-source("startup.R")
 
 # read in list with all fly names 
 fly_name_list <- read.table("./Individuals_List_47.txt", quote="\"", comment.char="")

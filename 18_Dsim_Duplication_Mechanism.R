@@ -1,7 +1,6 @@
 
 
 
-
 source("startup.R")
 
 dup_orthos <- read.csv("./Dmel_Dsim_Ortho_Duplicates.tsv", sep="")
@@ -166,11 +165,6 @@ dsim_dmel_chrom <- dsim_dmel_chrom[!is.na(dsim_dmel_chrom$dsim_dup_chrom),]
 dsim_dmel_chrom <- dsim_dmel_chrom[!duplicated(dsim_dmel_chrom[c('fly','dup','dup_chrom')]),]
 
 table(dsim_dmel_chrom$dup_chrom,dsim_dmel_chrom$dsim_dup_chrom)
-
-
-
-
-
 
 
 

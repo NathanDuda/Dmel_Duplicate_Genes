@@ -1,5 +1,7 @@
 
 
+# Author: Nathan Duda
+# Purpose: Analyze the output of CNVSelectR
 
 source("startup.R")
 
@@ -13,6 +15,14 @@ cnvselectr_output <- cnvselectr_output %>%
                             pval <= 0.05 ~ 'Yes'))
 
 
+ggplot(cnvselectr_output, aes(x=ds, y=n_flies_in, color=signif)) +
+  geom_jitter(size = 0.6) +
+  scale_y_continuous(breaks = c(0, 10, 20, 30, 40, 50), labels = c(0, 10, 20, 30, 40, 50)) +
+  xlim(0,1) +
+  theme_bw() +
+  labs(x='Ds', y='Frequency', color='Significant')
+
+
 cnvselectr_plot <- ggplot(cnvselectr_output, aes(x=ds, y=n_flies_in, color=signif)) +
   geom_point() +
   scale_y_continuous(breaks = c(0, 10, 20, 30, 40, 50), labels = c(0, 10, 20, 30, 40, 50)) +
@@ -22,18 +32,7 @@ cnvselectr_plot <- ggplot(cnvselectr_output, aes(x=ds, y=n_flies_in, color=signi
 
 ggsave(cnvselectr_plot, file = './CNVSelectR_Output.jpeg', height = 6, width = 10)
 
-###
-# the stacks of same ds are caused by same duplicate pairs being in multiple families 
-# if duplicate pairs that are part of multiple families are completely not allowed,
-# there is not enough data:
-no_rep_dups_cnvselectr_output <- cnvselectr_output[!(duplicated(cnvselectr_output$name) | duplicated(cnvselectr_output$name, fromLast = TRUE)), ]
 
-ggplot(no_rep_dups_cnvselectr_output, aes(x=ds, y=n_flies_in, color=signif)) +
-  geom_point() +
-  ylim(0,47) +
-  xlim(0,1) +
-  theme_bw()
-###
 
 # add chromosome info
 genes <- read.csv("./Annotations_Gene.tsv", sep="")
@@ -298,5 +297,73 @@ p <-  merge(x,ppi,by='fbgn')
 ggplot(p, aes(x=signif, y=ppi)) +
   geom_boxplot() +
   geom_signif(comparisons = list(c("No", "Yes")), test = "t.test")
+
+
+# duplication mechanism
+
+
+annotations <- read.csv("C:/Users/17735/Downloads/Dmel_Duplicate_Genes/Annotations.tsv", sep="")
+
+exon_counts <- annotations %>%
+  select(gene_group, type) %>%
+  filter(type == 'exon') %>%
+  select(-type) %>%
+  group_by(gene_group) %>%
+  mutate(n_exons = n()) %>%
+  distinct() 
+
+colnames(exon_counts) <- c('dup_1','dup_1_exons')
+cnvselectr_output <- merge(exon_counts, cnvselectr_output, by = 'dup_1')
+
+colnames(exon_counts) <- c('dup_2','dup_2_exons')
+cnvselectr_output <- merge(exon_counts, cnvselectr_output, by = 'dup_2')
+
+
+cnvselectr_output <- cnvselectr_output %>%
+  mutate(mech = case_when(dup_1_exons > 1 & dup_2_exons == 1 ~ 'RNA_dup_2',
+                          dup_2_exons > 1 & dup_1_exons == 1 ~ 'RNA_dup_1',
+                          dup_1_exons > 1 & dup_2_exons > 1 ~ 'DNA',
+                          dup_2_exons > 1 & dup_1_exons > 1 ~ 'DNA',
+                          dup_2_exons == 1 & dup_1_exons == 1 ~ 'unknown'))
+  
+  
+  
+t <- as.data.frame(table(cnvselectr_output$mech, cnvselectr_output$n_flies_in))
+
+ggplot(t, aes(x=Var2, y = Freq, group=Var1, color = Var1)) +
+  geom_line()
+
+ggplot(cnvselectr_output, aes(x=n_flies_in, fill=mech)) +
+  geom_histogram(position = 'fill')
+
+t <- as.data.frame(table(cnvselectr_output$mech, cnvselectr_output$dup_1_chrom, cnvselectr_output$dup_2_chrom))
+
+ggplot(t, aes(x=Var2, y=Var3, fill=Freq)) +
+  geom_tile() +
+  facet_wrap(~ Var1) +
+  labs(x='',y='')
+
+t <- as.data.frame(table(cnvselectr_output$mech, cnvselectr_output$signif))
+
+ggplot(t, aes(x=Var2, y=Var1, fill = Freq)) +
+  geom_tile()
+
+
+
+cnvselectr_output <- cnvselectr_output %>%
+  group_by(group) %>%
+  mutate(n_DNA_in_group = sum(mech == 'DNA'),
+         n_unk_in_group = sum(mech == 'unknown'),
+         n_RNA_in_group = sum(mech %in% c('RNA_dup_1', 'RNA_dup_2')))
+
+
+t <- cnvselectr_output[c('n_DNA_in_group','n_RNA_in_group','n_unk_in_group')]
+t$x <- rownames(t)
+t <- pivot_longer(t, cols=c('n_DNA_in_group','n_RNA_in_group','n_unk_in_group'))
+
+t <- t[t$value!=0,]
+ggplot(t, aes(x=value,fill=name)) +
+  geom_bar(position='fill')
+
 
 

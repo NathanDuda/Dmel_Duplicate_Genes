@@ -1,5 +1,8 @@
 
 
+# Author: Nathan Duda
+# Purpose: Run CNVSelectR to detect duplicate pairs under positive selection 
+
 #install_github("peterbchi/CNVSelectR")
 library(CNVSelectR)
 
@@ -269,16 +272,13 @@ CNVSelect_test_custom <- function(input_file, fasta_file){
 
 
 
-
-file_name <- 'group_3664.fa'
-
 group = 0 
 output_df <- data.frame()
 
-for (file_name in list.files('./CNVSelectR/Blastp_Dups_Combined_Codon_Alignments/')) {
+for (file_name in list.files('./CNVSelectR/Connected_Eq_Combined_Codon_Alignments/')) {
   group = group + 1
   
-  fasta_file <- paste0("./CNVSelectR/Blastp_Dups_Combined_Codon_Alignments/",file_name)
+  fasta_file <- paste0("./CNVSelectR/Connected_Eq_Combined_Codon_Alignments/",file_name)
   freq <- sum(grepl("^>", readLines(fasta_file))) / 2
   
   nrep <- freq 
