@@ -79,23 +79,62 @@ connected_dups <- connected_dups %>%
   separate(node, sep = '_', into = c('fly','gn'))
 
 
+min(table(connected_dups$fly))
+max(table(connected_dups$fly))
+# each fly has 9,224 to 12,055 genes in a community 
+
+
 community_fly_counts <- as.data.frame(table(connected_dups$fly, connected_dups$community))
 
 anys_to_anys <- community_fly_counts %>%
   group_by(Var2) %>%
   filter(all(Freq %in% c(0, 1, 2)))
+length(unique(anys_to_anys$Var2))
+# 24,720 out of 25,005 have all 0, 1, or 2 copies 
 
-
-one_to_ones <- community_fly_counts %>%
+one_to_zeros <- community_fly_counts %>%
   group_by(Var2) %>%
-  filter(all(Freq == 1))
-length(unique(one_to_ones$Var2)) # 816 one to ones out of the 25,005 total communities 
+  filter(all(Freq %in% c(0, 1)))
+length(unique(one_to_zeros$Var2))
+# 23,713 out of 25,005 have all 0 or 1 copies 
+
+only_one_fly <- community_fly_counts %>% filter(Freq != 0) 
+only_one_fly <- as.data.frame(table(only_one_fly$Var2))
+only_one_fly %>% summarize(sum(Freq == 1))
+# 97 out of 25,005 have only one fly in the community (one dup)
+
+single_copies <- one_to_zeros %>%
+  group_by(Var2) %>%
+  summarise(count_ones = sum(Freq == 1))
+table(single_copies$count_ones)
+# 5,678 communities are single-copy pairs 
+# 816 one to ones out of the 25,005 total communities 
+
+same_n_copies <- community_fly_counts %>%
+  group_by(Var2) %>%
+  summarise(distinct_values = n_distinct(Freq))
+sum(same_n_copies$distinct_values == 1)
+# 817 communities have the same number of copies in every fly
+community_fly_counts %>%
+  group_by(Var2) %>%
+  filter(all(Freq == 2))
+# one community has all flies with 2 copies 
+
+copy_variation <- community_fly_counts %>%
+  group_by(Var2) %>%
+  summarise(sd = sd(Freq))
+ggplot(copy_variation, aes(y = sd, x = 0)) + geom_violin()
+median(copy_variation$sd)
+# median value of copy number standard deviation is 0.2820567
+mean(copy_variation$sd)
+# mean value of copy number standard deviation is 0.3020396
 
 
 one_to_twos <- anys_to_anys %>%
   group_by(Var2) %>%
   filter(any(Freq == 2))
 length(unique(one_to_twos$Var2))
+# 1007 communities have 0, 1, or 2 copies with at least one 2 
 
 
 one_to_two_communities <- one_to_twos %>% select(Var2) %>% distinct()

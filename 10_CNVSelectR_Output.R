@@ -228,11 +228,19 @@ ggplot(p, aes(x=name, fill=value, y=signif)) +
   geom_tile() +
   theme_bw()
 
+chrom_counts_d1 <- t[c('dup_1_chrom','signif')]
+chrom_counts_d2 <- t[c('dup_2_chrom','signif')]
+colnames(chrom_counts_d1) <- c('chrom','signif')
+colnames(chrom_counts_d2) <- c('chrom','signif')
+chrom_counts <- rbind(chrom_counts_d1,chrom_counts_d2)
 
-
-ggplot(t, aes(x=dup_1_chrom, color=signif)) +
+ggplot(chrom_counts, aes(x=chrom, fill=signif)) +
   geom_bar() +
   theme_bw()
+ggplot(chrom_counts, aes(x=chrom, fill=signif)) +
+  geom_bar(position = 'fill') +
+  theme_bw() +
+  ylab('proportion')
 
 
 # tau
@@ -254,7 +262,7 @@ t <- merge(x,tau,by='fbgn')
 
 ggplot(t, aes(x=signif, y=tau)) +
   geom_boxplot() +
-  geom_signif(comparisons = list(c("No", "Yes")), test = "t.test", map_signif_level = TRUE,)
+  geom_signif(comparisons = list(c("No", "Yes")), test = "t.test", map_signif_level = TRUE)
 
 
 # ppi
@@ -296,7 +304,7 @@ p <-  merge(x,ppi,by='fbgn')
 
 ggplot(p, aes(x=signif, y=ppi)) +
   geom_boxplot() +
-  geom_signif(comparisons = list(c("No", "Yes")), test = "t.test")
+  geom_signif(comparisons = list(c("No", "Yes")), test = "t.test", map_signif_level = TRUE)
 
 
 # duplication mechanism
