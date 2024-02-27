@@ -242,6 +242,24 @@ ggplot(chrom_counts, aes(x=chrom, fill=signif)) +
   theme_bw() +
   ylab('proportion')
 
+# expression by chromosome
+exp_sig_chrom <- t[c(7,10,13:39)]
+exp_sig_chrom_1 <-  exp_sig_chrom %>% select(signif, dup_1_chrom, contains('dup1'))
+exp_sig_chrom_2 <-  exp_sig_chrom %>% select(signif, dup_2_chrom, contains('dup2'))
+colnames(exp_sig_chrom_2) <- colnames(exp_sig_chrom_1)
+
+exp_sig_chrom <- rbind(exp_sig_chrom_1,exp_sig_chrom_2)
+
+exp_sig_chrom <- pivot_longer(exp_sig_chrom, cols = c(3:15))
+exp_sig_chrom <- exp_sig_chrom %>% mutate(name = gsub('dup1_','',name))
+
+
+ggplot(exp_sig_chrom, aes(x = name, y = dup_1_chrom, fill = value)) +
+  geom_tile() +
+  facet_grid(.~signif)
+
+
+
 
 # tau
 
@@ -364,14 +382,45 @@ cnvselectr_output <- cnvselectr_output %>%
          n_unk_in_group = sum(mech == 'unknown'),
          n_RNA_in_group = sum(mech %in% c('RNA_dup_1', 'RNA_dup_2')))
 
+# get percentage of each mechanism 
+perc_mech <- cnvselectr_output %>%
+  distinct(group, .keep_all = TRUE) %>%
+  ungroup() %>%
+  summarize(dna = sum(n_DNA_in_group),
+            rna = sum(n_RNA_in_group),
+            unk = sum(n_unk_in_group)) %>%
+  t() %>%
+  as.data.frame() %>%
+  mutate(perc = V1 / sum(V1))
 
-t <- cnvselectr_output[c('n_DNA_in_group','n_RNA_in_group','n_unk_in_group')]
-t$x <- rownames(t)
-t <- pivot_longer(t, cols=c('n_DNA_in_group','n_RNA_in_group','n_unk_in_group'))
+# check if DNA mediated duplicates are next to each other
+same_chrom <- cnvselectr_output %>%
+  filter(dup_1_chrom == dup_2_chrom) %>%
+  mutate(distance = case_when(dup_1_start > dup_2_start ~ dup_1_start - dup_2_end,
+                              dup_2_start > dup_1_start ~ dup_2_start - dup_1_end)) %>%
+  mutate(combined_mech = case_when(str_detect(mech, 'RNA') ~ 'RNA', T ~ mech))
 
-t <- t[t$value!=0,]
-ggplot(t, aes(x=value,fill=name)) +
-  geom_bar(position='fill')
+same_chrom %>% filter(combined_mech != 'unknown') %>%
+  ggplot(., aes(x = dup_1_chrom, y = distance, color = combined_mech)) +
+    geom_boxplot() +
+    geom_point(position = position_dodge(width = 0.75)) +
+    scale_y_log10() + 
+    theme_bw()
+
+diff_chrom <- cnvselectr_output %>%
+  mutate(chrom_pair = paste0(pmin(dup_1_chrom, dup_2_chrom), "_", pmax(dup_1_chrom, dup_2_chrom))) %>%
+  filter(dup_1_chrom != dup_2_chrom) %>%
+  group_by(chrom_pair) %>%
+  summarise(count = n())
+
+
+# compare protein lengths
+lengths <- cnvselectr_output %>%
+  mutate(dup_1_len = dup_1_end - dup_1_start,
+         dup_2_len = dup_2_end - dup_2_start)
+
+ggplot(lengths, aes(x = signif, y = dup_1_len)) +
+  geom_boxplot()
 
 
 
