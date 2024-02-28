@@ -7,10 +7,7 @@ source("startup.R")
 # all_genes <- read.csv("./Corrected_Equivalent_Genes.tsv", sep="")
 # all_genes <- all_genes %>% distinct(.keep_all=T)
 
-
 connected_dups <- read.csv("./connected_dups.tsv", sep="")
-
-
 
 all_genes <- connected_dups %>%
   mutate(fly = sub("^(.*?)_.*", "\\1", node)) %>%
@@ -20,26 +17,22 @@ all_genes <- connected_dups %>%
   pivot_wider(., values_from = 'gn', names_from = 'fly')
 
 # count the number of genes 
-equiv_counts <- all_genes %>%
+equiv_counts_matrix <- all_genes %>%
   mutate_at(vars(2:48), ~ case_when(.==0~0,
                                     .!=0~str_count(as.character(.), ",") + 1)) 
 
-
 # get the one to ones 
-one_to_ones <- equiv_counts %>%
+one_to_ones <- equiv_counts_matrix %>%
   select(-community) %>%
   filter_all(all_vars(. %in% c(1)))
 
+
 # make frequency distributions 
-
-
-equiv_counts <- equiv_counts %>%
+equiv_counts <- equiv_counts_matrix %>%
   mutate_all(., ~replace(., is.na(.), 0)) %>%
-  pivot_longer(cols=c(2:ncol(equiv_counts)))
+  pivot_longer(cols=c(2:ncol(equiv_counts_matrix)))
 
-
-
-animate_df <- data.frame()
+n_copies_freq_dist <- data.frame()
 for (n_copies in c(1:3)){
   n_df <- equiv_counts %>%
     group_by(community) %>%
@@ -47,105 +40,42 @@ for (n_copies in c(1:3)){
     mutate(n_copies = n_copies) %>%
     filter(flies_with_n_copies != 0)
   
-  animate_df <- rbind(animate_df, n_df)
+  n_copies_freq_dist <- rbind(animate_df, n_df)
   print(n_copies)
 }
 
-
-ggplot(animate_df, aes(x = flies_with_n_copies)) +
+ggplot(n_copies_freq_dist, aes(x = flies_with_n_copies)) +
   geom_histogram(binwidth = 1) +
   facet_wrap(.~n_copies)
 
 
-####
-  
-
-t <- equiv_counts %>%
+# more than 1 copy frequency distribution
+equiv_counts %>%
   group_by(community) %>%
-  summarise(flies_with_n_copies = sum(value == 2)) %>%
+  summarise(flies_with_n_copies = sum(value > 1)) %>%
+  filter(flies_with_n_copies != 0) %>%
   
   ggplot(aes(x = flies_with_n_copies)) +
   geom_histogram(binwidth = 1)
 
 
 
+# make pca plot
+equiv_counts <- equiv_counts_matrix %>%
+  mutate_all(., ~replace(., is.na(.), 0)) 
 
+pca_result <- prcomp(as.data.frame(t(equiv_counts)))
 
-n_more_than_1 <- equiv_counts %>%
-  mutate_all(., ~replace(., is.na(.), 0)) %>%
-  rowwise() %>%
-  mutate(n_more_than_1 = sum(c_across(everything()) > 1))
-
-n_more_than_1 %>% filter(n_more_than_1 != 0) %>%
-  ggplot(., aes(x = n_more_than_1)) +
-    geom_histogram(binwidth = 1)
-
-
-equiv_counts <- equiv_counts %>%
-  mutate_all(., ~replace(., is.na(.), 0))
-  
-
-
-animate_df <- data.frame()
-for (n_copies in c(1:5)){
-  n_df <- equiv_counts %>%
-    rowwise() %>%
-    mutate(flies_with_n_copies = sum(c_across(everything()) == n_copies)) %>% # can change to > 
-    filter(flies_with_n_copies != 0) %>%
-    mutate(n_copies = n_copies)
-  
-  animate_df <- rbind(animate_df, n_df)
-  print(n_copies)
-}
-
-
-library(gganimate)
-
-animate_df %>% 
-  filter(n_copies == 1) %>%
-  ggplot(., aes(x = flies_with_n_copies)) +
-    geom_histogram(binwidth = 1)
-
-
-
-ggplot(animate_df, aes(x = flies_with_n_copies)) +
-  geom_histogram(binwidth = 1) +
-  transition_time(n_copies)
-
-
-
-
-
-##### animate
-
-
-
-#####
-
-
-
-# make a pca 
-
-
-transposed_df <- as.data.frame(t(equiv_counts))
-
-# Step 2: Perform PCA
-pca_result <- prcomp(transposed_df)
-
-
-# Step 3: Create a dataframe containing the PCA results
 pca_df <- data.frame(
   PC1 = pca_result$x[, 1],
   PC2 = pca_result$x[, 2],
-  Individuals = names(pca_result$x[, 1])  # Assuming column names are individuals
-)
+  Individuals = names(pca_result$x[, 1]))
 
-# Step 4: Create the PCA plot using ggplot2
 ggplot(pca_df, aes(x = PC1, y = PC2, label = Individuals)) +
   geom_point() + 
   geom_text(size = 2, vjust = 2)
 
-t <- pca_df %>%
+pca_plot <- pca_df %>%
   mutate(area = case_when(
     str_detect(Individuals, "B1|RAL|ORE|ISO|A1|A6|I23|B4") ~ 'North_America',
     str_detect(Individuals, "A2|B6") ~ 'South_America',
@@ -155,9 +85,7 @@ t <- pca_df %>%
     Individuals == "A7" ~ 'East_Asia' 
   ))
 
-
-
-ggplot(t, aes(x = PC1, y = PC2, color = continent)) +
+ggplot(pca_plot, aes(x = PC1, y = PC2, color = continent)) +
   geom_point()
 
 
@@ -167,11 +95,7 @@ ggplot(t, aes(x = PC1, y = PC2, color = area, label = Individuals)) +
   geom_text_repel(size = 2.5, max.overlaps = 20) +
   theme_bw()
 
-
-
 #############################
-
-
 
 
 fly_variances <- apply(equiv_counts, 2, var)
